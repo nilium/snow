@@ -1,0 +1,11 @@
+bin/snow
+*.sublime-*
+Makefile.sources
+*.o
+*.a
+*.so
+*.lib
+*.dll
+*.exe
+*.app
+*.ignore
