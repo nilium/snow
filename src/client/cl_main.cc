@@ -175,7 +175,7 @@ void client_t::run_frameloop()
   using namespace snow::renderer;
   auto window = window_;
   gl_state_t &gl = glstate_;
-  vertex_array_t vao(gl);
+  rvertex_array_t vao(gl);
   rbuffer_t vertex_buffer(gl, GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 512);
   rbuffer_t index_buffer(gl, GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 128);
 
@@ -372,6 +372,7 @@ void client_t::run_frameloop()
   program.unload();
   index_buffer.unload();
   vertex_buffer.unload();
+
 
   glfwMakeContextCurrent(window);
 

@@ -6,21 +6,37 @@ namespace snow {
 namespace renderer {
 
 
-vertex_array_t::vertex_array_t(gl_state_t &gl)
+
+/*==============================================================================
+  constructor (no initializer)
+
+    Description
+==============================================================================*/
+rvertex_array_t::rvertex_array_t(gl_state_t &gl)
 : state_(gl), initfn_(nullptr), inited_(false), name_(0)
 {
 }
 
 
 
-vertex_array_t::vertex_array_t(gl_state_t &gl, init_fn_t &&initfn)
+/*==============================================================================
+  constructor (with initializer)
+
+    Description
+==============================================================================*/
+rvertex_array_t::rvertex_array_t(gl_state_t &gl, init_fn_t &&initfn)
 : state_(gl), initfn_(initfn), inited_(false), name_(0)
 {
 }
 
 
 
-vertex_array_t::vertex_array_t(vertex_array_t &&other)
+/*==============================================================================
+  move constructor
+
+    Description
+==============================================================================*/
+rvertex_array_t::rvertex_array_t(rvertex_array_t &&other)
 : state_(other.state_), initfn_(std::move(other.initfn_)),
   inited_(other.inited_), name_(other.name_)
 {
@@ -29,7 +45,12 @@ vertex_array_t::vertex_array_t(vertex_array_t &&other)
 
 
 
-vertex_array_t &vertex_array_t::operator = (vertex_array_t &&other)
+/*==============================================================================
+  move assignment
+
+    Description
+==============================================================================*/
+rvertex_array_t &rvertex_array_t::operator = (rvertex_array_t &&other)
 {
   if (&other != this) {
     if (&state_ != &other.state_) {
@@ -48,7 +69,12 @@ vertex_array_t &vertex_array_t::operator = (vertex_array_t &&other)
 
 
 
-vertex_array_t::~vertex_array_t()
+/*==============================================================================
+  destructor
+
+    Description
+==============================================================================*/
+rvertex_array_t::~rvertex_array_t()
 {
   unload();
 }
@@ -56,7 +82,12 @@ vertex_array_t::~vertex_array_t()
 
 
 
-void vertex_array_t::set_initializer(std::nullptr_t np)
+/*==============================================================================
+  set_initializer(nullptr_t)
+
+    Description
+==============================================================================*/
+void rvertex_array_t::set_initializer(std::nullptr_t np)
 {
   unload();
   initfn_ = nullptr;
@@ -65,7 +96,12 @@ void vertex_array_t::set_initializer(std::nullptr_t np)
 
 
 
-void vertex_array_t::set_initializer(init_fn_t &&initfn)
+/*==============================================================================
+  set_initializer(non-null function)
+
+    Description
+==============================================================================*/
+void rvertex_array_t::set_initializer(init_fn_t &&initfn)
 {
   unload();
   initfn_ = initfn;
@@ -73,7 +109,12 @@ void vertex_array_t::set_initializer(init_fn_t &&initfn)
 
 
 
-void vertex_array_t::load()
+/*==============================================================================
+  load
+
+    Description
+==============================================================================*/
+void rvertex_array_t::load()
 {
   if (!inited_) {
     GLuint prev_binding = state_.vertex_array();
@@ -84,7 +125,12 @@ void vertex_array_t::load()
 
 
 
-void vertex_array_t::bind()
+/*==============================================================================
+  bind
+
+    Description
+==============================================================================*/
+void rvertex_array_t::bind()
 {
   if (name_ == 0 || !inited_) {
     force_load();
@@ -96,7 +142,12 @@ void vertex_array_t::bind()
 
 
 
-void vertex_array_t::unload()
+/*==============================================================================
+  unload
+
+    Description
+==============================================================================*/
+void rvertex_array_t::unload()
 {
   if (name_ != 0) {
     inited_ = false;
@@ -107,7 +158,12 @@ void vertex_array_t::unload()
 
 
 
-void vertex_array_t::zero()
+/*==============================================================================
+  zero
+
+    Description
+==============================================================================*/
+void rvertex_array_t::zero()
 {
   initfn_ = nullptr;
   inited_ = false;
@@ -115,7 +171,12 @@ void vertex_array_t::zero()
 }
 
 
-void vertex_array_t::force_load()
+/*==============================================================================
+  force_load
+
+    Description
+==============================================================================*/
+void rvertex_array_t::force_load()
 {
   if (name_ == 0) {
     glGenVertexArrays(1, &name_);
@@ -138,6 +199,8 @@ void vertex_array_t::force_load()
     inited_ = true;
   }
 }
+
+
 
 } // namespace renderer
 } // namespace snow

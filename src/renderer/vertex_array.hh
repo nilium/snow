@@ -9,18 +9,18 @@ namespace renderer {
 
 struct gl_state_t;
 
-struct vertex_array_t
+struct rvertex_array_t
 {
   using init_fn_t = std::function<bool(gl_state_t &)>;
 
-  vertex_array_t(gl_state_t &gl);
-  vertex_array_t(gl_state_t &gl, init_fn_t &&initfn);
-  vertex_array_t(vertex_array_t &&);
-  vertex_array_t &operator = (vertex_array_t &&);
-  ~vertex_array_t();
+  rvertex_array_t(gl_state_t &gl);
+  rvertex_array_t(gl_state_t &gl, init_fn_t &&initfn);
+  rvertex_array_t(rvertex_array_t &&);
+  rvertex_array_t &operator = (rvertex_array_t &&);
+  ~rvertex_array_t();
 
-  vertex_array_t(const vertex_array_t &)              = delete;
-  vertex_array_t &operator = (const vertex_array_t &) = delete;
+  rvertex_array_t(const rvertex_array_t &)              = delete;
+  rvertex_array_t &operator = (const rvertex_array_t &) = delete;
 
   void          set_initializer(init_fn_t &&initfn);
   void          set_initializer(std::nullptr_t);
