@@ -5,16 +5,16 @@
 #include <snow/math/math3d.hh>
 
 namespace snow {
-namespace game {
+
 
 struct S_EXPORT transform_t
 {
-  typedef double   elem_t;
-  typedef mat4d_t  mat4_t;
-  typedef mat3d_t  mat3_t;
-  typedef vec3d_t  vec3_t;
-  typedef vec4d_t  vec4_t;
-  typedef quatd_t  quat_t;
+  using elem_t = float;
+  using mat4_t = mat4f_t;
+  using mat3_t = mat3f_t;
+  using vec3_t = vec3f_t;
+  using vec4_t = vec4f_t;
+  using quat_t = quatf_t;
 
   transform_t() = default;
   transform_t(const transform_t &other) = default;
@@ -70,7 +70,7 @@ private:
   vec3_t  translation_;
 };
 
-} // namespace game
+
 } // namespace snow
 
 #endif /* end __SNOW_COMMON__TRANSFORM_HH__ include guard */
