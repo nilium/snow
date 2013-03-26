@@ -2,14 +2,17 @@
 
 namespace snow {
 
+
 cvar_base_t::cvar_base_t(string name, int flags) :
   flags_(flags), name_(name)
 {}
 
+
+
 template <typename T>
 struct S_EXPORT cvar_typed_t : public cvar_base_t
 {
-  typedef T value_type;
+  using value_type = T;
   static_assert(std::is_same<value_type, int>::value |
                 std::is_same<value_type, double>::value,
                 "cvar_typed_t<T> must be of type string, int, or double");
@@ -22,7 +25,11 @@ public:
     cvar_base_t(name, flags), value_(value)
   {}
 
-  virtual ~cvar_typed_t() = default;
+
+
+  virtual ~cvar_typed_t() {}
+
+
 
   virtual auto int_value() const -> int
   {
@@ -32,6 +39,8 @@ public:
       return static_cast<int>(value_);
   }
 
+
+
   virtual auto double_value() const -> double
   {
     if (std::is_same<value_type, double>::value)
@@ -40,20 +49,28 @@ public:
       return static_cast<double>(value_);
   }
 
+
+
   virtual auto string_value() const -> string
   {
     return std::to_string(value_);
   }
+
+
 
   virtual void store_int(int value)
   {
     value_ = value;
   }
 
+
+
   virtual void store_double(double value)
   {
     value_ = value;
   }
+
+
 
   virtual void store_string(const string &value)
   {
@@ -67,27 +84,35 @@ public:
     }
   }
 
+
+
   virtual auto kind() const -> cvar_kind_t
   {
     return (cvar_kind_t)std::is_same<value_type, double>::value;
   }
 
-};
+
+}; // struct cvar_typed_t<T>
+
+
 
 template <>
 struct S_EXPORT cvar_typed_t<string> : public cvar_base_t
 {
-  typedef string value_type;
+  using value_type = string;
 
 protected:
   value_type value_;
+
 
 public:
   cvar_typed_t(string name, value_type value, int flags) :
     cvar_base_t(name, flags), value_(value)
   {}
 
-  virtual ~cvar_typed_t() = default;
+  virtual ~cvar_typed_t() {}
+
+
 
   virtual auto int_value() const -> int
   {
@@ -98,6 +123,8 @@ public:
     }
   }
 
+
+
   virtual auto double_value() const -> double
   {
     try {
@@ -107,46 +134,66 @@ public:
     }
   }
 
+
+
   virtual auto string_value() const -> string
   {
     return value_;
   }
+
+
 
   virtual void store_int(int value)
   {
     value_ = std::to_string(value);
   }
 
+
+
   virtual void store_double(double value)
   {
     value_ = std::to_string(value);
   }
+
+
 
   virtual void store_string(const string &value)
   {
     value_ = value;
   }
 
+
+
   virtual auto kind() const -> cvar_kind_t
   {
     return CVAR_KIND_STRING;
   }
-};
+
+
+}; // struct cvar_typed_t<string>
+
+
 
 cvar_t make_cvar_int(string name, int value, int flags)
 {
   return std::make_shared<cvar_typed_t<int> >(name, value, flags);
 }
 
+
+
 cvar_t make_cvar_double(string name, double value, int flags)
 {
   return std::make_shared<cvar_typed_t<double> >(name, value, flags);
 }
 
+
+
 cvar_t make_cvar_string(string name, const string &value, int flags)
 {
   return std::make_shared<cvar_typed_t<string> >(name, value, flags);
 }
+
+
 
 cvar_t &convert_cvar(cvar_t &&cvar, cvar_kind_t to_kind)
 {
@@ -167,6 +214,8 @@ cvar_t &convert_cvar(cvar_t &&cvar, cvar_kind_t to_kind)
   return cvar;
 }
 
+
+
 std::ostream &operator << (std::ostream &out, const cvar_base_t *in)
 {
   out << "{ name: " << in->name() << ", value: ";
@@ -177,5 +226,6 @@ std::ostream &operator << (std::ostream &out, const cvar_base_t *in)
   }
   return (out << " }");
 }
+
 
 } // namespace snow

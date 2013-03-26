@@ -2,7 +2,7 @@
 #define __SNOW__SGL_EXTENSIONS_HH__
 
 namespace snow {
-namespace renderer {
+
 
 enum sgl_extension_t : unsigned {
   SGL_GL_3DFX_multisample,
@@ -555,7 +555,7 @@ enum sgl_extension_t : unsigned {
   SGL_EXTENSION_COUNT,
 };
 
-} // namespace renderer
+
 } // namespace snow
 
 #endif /* end __SNOW__SGL_EXTENSIONS_HH__ include guard */

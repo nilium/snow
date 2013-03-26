@@ -3,7 +3,6 @@
 #include <iostream>
 
 namespace snow {
-namespace renderer {
 
 
 namespace {
@@ -832,6 +831,4 @@ void gl_state_t::set_blend_equation(GLenum color, GLenum alpha)
 }
 
 
-
-} // namespace renderer
 } // namespace snow

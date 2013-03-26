@@ -14,18 +14,26 @@
 #include <snow-common.hh>
 #include <snow/math/math3d.hh>
 
+
 namespace snow {
+
 
 #define GL_QUEUE_NAME    SNOW_ORG".gl_queue"
 #define FRAME_QUEUE_NAME SNOW_ORG".frame_queue"
+
+
 
 static client_t         g_client;
 static std::once_flag   g_init_flag;
 static dispatch_queue_t g_gl_queue = NULL;
 static dispatch_queue_t g_main_queue = NULL;
 
+
+
 const double FRAME_HERTZ = 60;
 const double FRAME_SEQ_TIME = 1000.0 / FRAME_HERTZ;
+
+
 
 enum shader_uniform_t : int
 {
@@ -33,12 +41,16 @@ enum shader_uniform_t : int
   UNIFORM_PROJECTION
 };
 
+
+
 enum shader_attr_t : GLuint
 {
   ATTR_POSITION,
   ATTR_NORMAL,
   ATTR_COLOR
 };
+
+
 
 template <typename T>
 GLsizei stride_of(const T &arr)
@@ -52,12 +64,16 @@ GLsizei stride_of(const T &arr)
   }
 }
 
+
+
 std::array<vec4f_t, 4> point_data {{
-  { -1.0f,  1.0f, -1.0f, 1.0f },
-  {  1.0f,  1.0f, -1.0f, 1.0f },
-  {  1.0f, -1.0f, -1.0f, 1.0f },
-  { -1.0f, -1.0f, -1.0f, 1.0f }
+  { -1.0f,  1.0f, 0.0f, 1.0f },
+  {  1.0f,  1.0f, 0.0f, 1.0f },
+  {  1.0f, -1.0f, 0.0f, 1.0f },
+  { -1.0f, -1.0f, 0.0f, 1.0f }
 }};
+
+
 
 std::array<vec3f_t, 4> normal_data {{
   { 0.0f, 0.0f, -1.0f },
@@ -66,6 +82,8 @@ std::array<vec3f_t, 4> normal_data {{
   { 0.0f, 0.0f, -1.0f }
 }};
 
+
+
 std::array<vec4f_t, 4> color_data {{
   { 1, 0, 0, 1 },
   { 0, 1, 0, 1 },
@@ -73,10 +91,14 @@ std::array<vec4f_t, 4> color_data {{
   { 1, 0, 1, 1 }
 }};
 
+
+
 std::array<vec3_t<uint32_t>, 2> face_data {{
   { 0, 1, 2 },
   { 0, 3, 2 }
 }};
+
+
 
 const string vertex_shader_source {
   "#version 150\n"
@@ -94,6 +116,8 @@ const string vertex_shader_source {
   "}\n"
 };
 
+
+
 const string fragment_shader_source {
   "#version 150\n"
   "smooth in vec4 color_varying;\n"
@@ -103,10 +127,14 @@ const string fragment_shader_source {
   "}\n"
 };
 
+
+
 static void client_error_callback(int error, const char *msg)
 {
   std::clog << "GLFW Error [" << error << "] " << msg << std::endl;
 }
+
+
 
 static void client_cleanup()
 {
@@ -116,10 +144,14 @@ static void client_cleanup()
   glfwTerminate();
 }
 
+
+
 dispatch_queue_t cl_get_gl_queue()
 {
   return g_gl_queue;
 }
+
+
 
 client_t &client_t::get_client(int client_num)
 {
@@ -129,16 +161,22 @@ client_t &client_t::get_client(int client_num)
   return g_client;
 }
 
+
+
 client_t::client_t() :
 frame_queue_(dispatch_queue_create(FRAME_QUEUE_NAME, DISPATCH_QUEUE_CONCURRENT)),
 running_(false)
 {
 }
 
+
+
 client_t::~client_t()
 {
   dispose();
 }
+
+
 
 void client_t::dispose()
 {
@@ -156,6 +194,8 @@ void client_t::dispose()
   }
 }
 
+
+
 // must be run on main queue
 void client_t::terminate()
 {
@@ -164,15 +204,18 @@ void client_t::terminate()
   sys_quit();
 }
 
+
+
 void client_t::quit()
 {
   running_.store(false);
 }
 
+
+
 // Run as single thread
 void client_t::run_frameloop()
 {
-  using namespace snow::renderer;
   auto window = window_;
   gl_state_t &gl = glstate_;
   rvertex_array_t vao(gl);

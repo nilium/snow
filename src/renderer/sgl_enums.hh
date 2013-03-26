@@ -4,8 +4,6 @@
 #include "sgl.hh"
 
 namespace snow {
-namespace renderer {
-
 
 
 enum sgl_buffer_target_t : unsigned
@@ -46,88 +44,6 @@ enum sgl_texture_target_t : unsigned
   SGL_TEXTURE_INVALID_TARGET
 };
 
-
-
-/*==============================================================================
-  sgl_buffer_target
-
-    Converts an sgl_buffer_target_t to the correspond GL buffer target enum.
-==============================================================================*/
-inline GLenum sgl_buffer_target_to_gl(const unsigned target)
-{
-  switch (target) {
-  case SGL_ARRAY_BUFFER: return GL_ARRAY_BUFFER;
-  case SGL_ELEMENT_ARRAY_BUFFER: return GL_ELEMENT_ARRAY_BUFFER;
-  case SGL_PIXEL_PACK_BUFFER: return GL_PIXEL_PACK_BUFFER;
-  case SGL_PIXEL_UNPACK_BUFFER: return GL_PIXEL_UNPACK_BUFFER;
-#if GL_VERSION_3_1
-  case SGL_TEXTURE_BUFFER: return GL_TEXTURE_BUFFER;
-#endif
-#if GL_VERSION_3_0
-  case SGL_TRANSFORM_FEEDBACK_BUFFER: return GL_TRANSFORM_FEEDBACK_BUFFER;
-#endif
-#if GL_VERSION_3_1 || GL_ARB_uniform_buffer_object
-  case SGL_UNIFORM_BUFFER: return GL_UNIFORM_BUFFER;
-#endif
-#if GL_VERSION_3_1 || GL_ARB_copy_buffer
-  case SGL_COPY_READ_BUFFER: return GL_COPY_READ_BUFFER;
-  case SGL_COPY_WRITE_BUFFER: return GL_COPY_WRITE_BUFFER;
-#endif
-#if GL_VERSION_4_0 || GL_ARB_draw_indirect
-  case SGL_DRAW_INDIRECT_BUFFER: return GL_DRAW_INDIRECT_BUFFER;
-#endif
-#if GL_VERSION_4_2 || GL_ARB_shader_atomic_counters
-  case SGL_ATOMIC_COUNTER_BUFFER: return GL_ATOMIC_COUNTER_BUFFER;
-#endif
-#if GL_VERSION_4_3 || GL_ARB_compute_shader
-  case SGL_DISPATCH_INDIRECT_BUFFER: return GL_DISPATCH_INDIRECT_BUFFER;
-#endif
-#if GL_VERSION_4_3 || GL_ARB_shader_storage_buffer_object
-  case SGL_SHADER_STORAGE_BUFFER: return GL_SHADER_STORAGE_BUFFER;
-#endif
-  default: return 0;
-  }
-}
-
-
-
-/*==============================================================================
-  sgl_buffer_target_binding
-
-    Converts an sgl_buffer_target_t to the corresponding buffer target binding
-    enum (for use with glGet).
-==============================================================================*/
-inline GLenum sgl_buffer_target_to_gl_binding(const unsigned target)
-{
-  switch (target) {
-  case SGL_ARRAY_BUFFER: return GL_ARRAY_BUFFER_BINDING;
-  case SGL_ELEMENT_ARRAY_BUFFER: return GL_ELEMENT_ARRAY_BUFFER_BINDING;
-  case SGL_PIXEL_PACK_BUFFER: return GL_PIXEL_PACK_BUFFER_BINDING;
-  case SGL_PIXEL_UNPACK_BUFFER: return GL_PIXEL_UNPACK_BUFFER_BINDING;
-#if GL_VERSION_3_1
-  case SGL_TEXTURE_BUFFER: return GL_TEXTURE_BINDING_BUFFER;
-#endif
-#if GL_VERSION_3_0
-  case SGL_TRANSFORM_FEEDBACK_BUFFER: return GL_TRANSFORM_FEEDBACK_BUFFER_BINDING;
-#endif
-#if GL_VERSION_3_1 || GL_ARB_uniform_buffer_object
-  case SGL_UNIFORM_BUFFER: return GL_UNIFORM_BUFFER_BINDING;
-#endif
-#if GL_VERSION_4_0 || GL_ARB_draw_indirect
-  case SGL_DRAW_INDIRECT_BUFFER: return GL_DRAW_INDIRECT_BUFFER_BINDING;
-#endif
-#if GL_VERSION_4_2 || GL_ARB_shader_atomic_counters
-  case SGL_ATOMIC_COUNTER_BUFFER: return GL_ATOMIC_COUNTER_BUFFER_BINDING;
-#endif
-#if GL_VERSION_4_3 || GL_ARB_compute_shader
-  case SGL_DISPATCH_INDIRECT_BUFFER: return GL_DISPATCH_INDIRECT_BUFFER_BINDING;
-#endif
-#if GL_VERSION_4_3 || GL_ARB_shader_storage_buffer_object
-  case SGL_SHADER_STORAGE_BUFFER: return GL_SHADER_STORAGE_BUFFER_BINDING;
-#endif
-  default: return 0;
-  }
-}
 
 
 
@@ -346,8 +262,6 @@ inline unsigned sgl_texture_target_from_gl_binding(const GLenum target)
 }
 
 
-
-} // namespace renderer
 } // namespace snow
 
 #endif /* end __SNOW__GL_ENUMS_HH__ include guard */

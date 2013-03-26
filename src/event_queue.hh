@@ -13,8 +13,8 @@
 #include <snow/types/types_2d.hh>
 
 
-
 namespace snow {
+
 
 enum event_kind_t : int
 {
@@ -44,12 +44,18 @@ enum event_kind_t : int
   ALL_EVENT_KINDS      = (~NULL_EVENT)
 };
 
+
+
 S_EXPORT const string &event_kind_string(event_kind_t kind);
+
+
 
 struct S_EXPORT button_event_t {
   int button;
   int action;
 };
+
+
 
 struct S_EXPORT event_t
 {
@@ -71,6 +77,8 @@ struct S_EXPORT event_t
   };
 };
 
+
+
 inline
 std::ostream &operator << (std::ostream &out, const button_event_t &in)
 {
@@ -82,6 +90,8 @@ std::ostream &operator << (std::ostream &out, const button_event_t &in)
                               ? "GLFW_RELEASE }"
                               : "GLFW_REPEAT }")));
 }
+
+
 
 inline
 std::ostream &operator << (std::ostream &out, const event_t &in)
@@ -128,28 +138,31 @@ std::ostream &operator << (std::ostream &out, const event_t &in)
   return (out << " }");
 }
 
+
+
 struct S_EXPORT event_queue_t
 {
-  typedef std::deque<event_t> event_list_t;
-  typedef std::shared_ptr<event_queue_t> shared_ptr;
-  typedef std::weak_ptr<event_queue_t> weak_ptr;
+  using event_list_t = std::deque<event_t>;
+  using shared_ptr = std::shared_ptr<event_queue_t>;
+  using weak_ptr = std::weak_ptr<event_queue_t>;
+
 
   event_queue_t();
   virtual ~event_queue_t();
 
-  virtual bool wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
-  virtual bool peek_event(event_t &out) const;
-  virtual bool poll_event(event_t &out);
-  virtual void emit_event(const event_t &event);
+  virtual bool          wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
+  virtual bool          peek_event(event_t &out) const;
+  virtual bool          poll_event(event_t &out);
+  virtual void          emit_event(const event_t &event);
 
   // Get a copy of the event queue
-  virtual event_list_t event_queue() const;
+  virtual event_list_t  event_queue() const;
 
-  virtual void set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
+  virtual void          set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
 
 private:
-  dispatch_queue_t queue_;
-  event_list_t events_;
+  dispatch_queue_t  queue_;
+  event_list_t      events_;
 };
 
 

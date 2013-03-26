@@ -7,9 +7,12 @@
 #include <atomic>
 #include "../renderer/gl_state.hh"
 
+
 struct GLFWwindow;
 
+
 namespace snow {
+
 
 struct S_EXPORT client_t
 {
@@ -45,12 +48,14 @@ private:
   GLFWwindow *window_;
   event_queue_t event_queue_;
   double last_frame_;
-  renderer::gl_state_t glstate_;
+  gl_state_t glstate_;
 
   std::atomic<bool> running_;
 };
 
+
 S_EXPORT dispatch_queue_t cl_get_gl_queue();
+
 
 } // namespace snow
 

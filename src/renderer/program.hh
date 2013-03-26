@@ -7,14 +7,13 @@
 #include <set>
 
 namespace snow {
-namespace renderer {
 
 
 struct gl_state_t;
 struct rshader_t;
 
 
-struct rprogram_t
+struct S_EXPORT rprogram_t
 {
   // For move semantics to work, program objects must share the same
   // gl_state_t, otherwise an exception will be thrown if assigning one shader
@@ -75,10 +74,14 @@ private:
   using uniform_loc_t = std::pair<GLint, name_set_t::const_iterator>;
   using uniforms_t    = std::map<int, uniform_loc_t>;
 
+  S_HIDDEN
   void            zero();
 
+  S_HIDDEN
   void            load_uniforms();
+  S_HIDDEN
   void            load_uniform(uniform_loc_t &loc);
+  S_HIDDEN
   void            load_attribs();
 
   // GL state object, needed for use()
@@ -95,7 +98,7 @@ private:
   string          error_str_;
 };
 
-} // namespace renderer
+
 } // namespace snow
 
 #endif /* end __SNOW__PROGRAM_HH__ include guard */

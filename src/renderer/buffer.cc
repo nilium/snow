@@ -4,12 +4,14 @@
 #include <vector>
 
 namespace snow {
-namespace renderer {
+
 
 rbuffer_t::rbuffer_t(gl_state_t &state, GLuint target, GLenum usage, GLsizeiptr size)
 : state_(state), size_(size), target_(target), buffer_(0), usage_(usage)
 {
 }
+
+
 
 rbuffer_t::rbuffer_t(rbuffer_t &&buf)
 : state_(buf.state_), size_(buf.size_), target_(buf.target_), buffer_(buf.buffer_), usage_(buf.usage_)
@@ -17,11 +19,15 @@ rbuffer_t::rbuffer_t(rbuffer_t &&buf)
   buf.zero();
 }
 
+
+
 rbuffer_t::~rbuffer_t()
 {
   if (valid() && generated())
     unload();
 }
+
+
 
 rbuffer_t &rbuffer_t::operator = (rbuffer_t &&buf)
 {
@@ -42,6 +48,8 @@ rbuffer_t &rbuffer_t::operator = (rbuffer_t &&buf)
 
   return *this;
 }
+
+
 
 void rbuffer_t::resize(GLsizeiptr new_size, bool save_data)
 {
@@ -82,6 +90,8 @@ void rbuffer_t::resize(GLsizeiptr new_size, bool save_data)
   }
 }
 
+
+
 void rbuffer_t::set_usage(GLenum usage)
 {
   if (!valid())
@@ -89,6 +99,8 @@ void rbuffer_t::set_usage(GLenum usage)
   usage_ = usage;
   resize(size(), true);
 }
+
+
 
 void rbuffer_t::get_buffer(void *data, GLintptr offset, GLsizeiptr length)
 {
@@ -106,6 +118,8 @@ void rbuffer_t::get_buffer(void *data, GLintptr offset, GLsizeiptr length)
   }
 }
 
+
+
 void rbuffer_t::bind()
 {
   if (!valid())
@@ -122,6 +136,8 @@ void rbuffer_t::bind()
   }
 }
 
+
+
 void rbuffer_t::unload()
 {
   if (generated()) {
@@ -129,6 +145,8 @@ void rbuffer_t::unload()
     assert_gl("Deleting buffer object");
   }
 }
+
+
 
 void rbuffer_t::zero()
 {
@@ -138,5 +156,5 @@ void rbuffer_t::zero()
   usage_ = 0;
 }
 
+
 } // namespace snow
-} // namespace renderer

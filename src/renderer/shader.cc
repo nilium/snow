@@ -3,8 +3,6 @@
 #include "gl_error.hh"
 
 namespace snow {
-namespace renderer {
-
 
 
 rshader_t::rshader_t(gl_state_t &state, GLenum kind)
@@ -97,7 +95,7 @@ bool rshader_t::compile()
   }
 
   compiled_ = (compile_status == GL_TRUE);
-  
+
   return compiled_;
 }
 
@@ -124,6 +122,4 @@ void rshader_t::zero()
 }
 
 
-
-} // renderer
 } // snow

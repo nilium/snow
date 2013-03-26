@@ -1,15 +1,16 @@
 #ifndef __SNOW__VERTEX_ARRAY_HH__
 #define __SNOW__VERTEX_ARRAY_HH__
 
+#include <snow/config.hh>
 #include "sgl.hh"
 #include <functional>
 
 namespace snow {
-namespace renderer {
+
 
 struct gl_state_t;
 
-struct rvertex_array_t
+struct S_EXPORT rvertex_array_t
 {
   using init_fn_t = std::function<bool(gl_state_t &)>;
 
@@ -45,7 +46,7 @@ private:
   GLuint        name_;
 };
 
-} // namespace renderer
+
 } // namespace snow
 
 #endif /* end __SNOW__VERTEXARRAY_HH__ include guard */

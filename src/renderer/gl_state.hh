@@ -9,11 +9,15 @@
 #include <set>
 
 namespace snow {
-namespace renderer {
 
 
+/*==============================================================================
 
-struct gl_state_t
+  GL state object, mainly used to do error handling and save some state client-
+  side. Only handles a small subset of GL state.
+
+==============================================================================*/
+struct S_EXPORT gl_state_t
 {
   gl_state_t() = default;
   ~gl_state_t() = default;
@@ -33,7 +37,7 @@ struct gl_state_t
 *                                 System Info                                  *
 *******************************************************************************/
 public:
-  typedef std::pair<GLint, GLint> version_t;
+  using version_t = std::pair<GLint, GLint>;
 
 private:
   string version_str_;
@@ -198,8 +202,6 @@ public:
 };
 
 
-
-} // namespace renderer
 } // namespace snow
 
 #endif /* end __SNOW__GL_STATE_HH__ include guard */

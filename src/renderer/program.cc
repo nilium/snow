@@ -5,7 +5,6 @@
 #include <iostream>
 
 namespace snow {
-namespace renderer {
 
 
 namespace {
@@ -410,6 +409,4 @@ void rprogram_t::load_uniform(uniform_loc_t &loc)
 }
 
 
-
-} // namespace renderer
 } // namespace snow

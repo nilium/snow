@@ -7,7 +7,7 @@
 #include "sgl.hh"
 
 namespace snow {
-namespace renderer {
+
 
 struct rbuffer_t;
 
@@ -241,7 +241,7 @@ private:
   std::vector<triangle_t> faces_;
 };
 
-} // namespace renderer
+
 } // namespace snow
 
 #endif /* end __SNOW__MESH_HH__ include guard */

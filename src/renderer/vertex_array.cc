@@ -3,8 +3,6 @@
 #include "gl_error.hh"
 
 namespace snow {
-namespace renderer {
-
 
 
 /*==============================================================================
@@ -201,6 +199,4 @@ void rvertex_array_t::force_load()
 }
 
 
-
-} // namespace renderer
 } // namespace snow

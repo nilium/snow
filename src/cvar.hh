@@ -53,7 +53,7 @@ public:
   virtual auto kind() const -> cvar_kind_t       = 0;
 };
 
-typedef std::shared_ptr<cvar_base_t> cvar_t;
+using cvar_t = std::shared_ptr<cvar_base_t>;
 
 S_EXPORT cvar_t make_cvar(string name, int value, int flags);
 S_EXPORT cvar_t make_cvar(string name, double value, int flags);

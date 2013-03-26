@@ -1,16 +1,16 @@
 #ifndef __SNOW__SHADER_HH__
 #define __SNOW__SHADER_HH__
 
+#include <snow/config.hh>
 #include "sgl.hh"
 
 namespace snow {
-namespace renderer {
 
 
 struct gl_state_t;
 
 
-struct rshader_t
+struct S_EXPORT rshader_t
 {
   friend struct rprogram_t;
 
@@ -40,7 +40,7 @@ struct rshader_t
   inline string error_string() const { return error_str_; }
 
 private:
-  void zero();
+  S_HIDDEN void zero();
 
   gl_state_t &state_;
   GLenum kind_;
@@ -49,7 +49,7 @@ private:
   string error_str_;
 };
 
+
 } // namespace snow
-} // namespace renderer
 
 #endif /* end __SNOW__SHADER_HH__ include guard */
