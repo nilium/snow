@@ -13,9 +13,10 @@ CFLAGS+= -Wall
 CFLAGS+= -DTARGET_OS_MAC
 CFLAGS+= -fblocks
 
-PKGCONFIG_LIBS=glfw3 libenet snow-common
+PKGCONFIG_LIBS=sqlite3 glfw3 libenet snow-common
 CFLAGS+= $(shell pkg-config --cflags $(PKGCONFIG_LIBS))
 LDFLAGS+= $(shell pkg-config --libs $(PKGCONFIG_LIBS))
+LDFLAGS+= -llua
 
 ifeq ($(DEBUG),)
 	DEBUG=yes

@@ -1,0 +1,36 @@
+CREATE TABLE font_glyphs(
+  font_id INTEGER,
+  code INTEGER,
+  page INTEGER,
+  frame_x INTEGER,
+  frame_y INTEGER,
+  frame_width INTEGER,
+  frame_height INTEGER,
+  advance_x REAL,
+  advance_y REAL,
+  offset_x REAL,
+  offset_y REAL
+);
+CREATE TABLE font_info(
+  font_id INTEGER PRIMARY KEY,
+  pages INTEGER,
+  num_glyphs INTEGER,
+  num_kernings INTEGER,
+  line_height REAL,
+  leading REAL,
+  ascent REAL,
+  descent REAL,
+  page_width INTEGER,
+  page_height INTEGER,
+  bbox_min_x REAL,
+  bbox_max_x REAL,
+  bbox_min_y REAL,
+  bbox_max_y REAL,
+  name TEXT
+);
+CREATE TABLE font_kernings(
+  font_id INTEGER,
+  first_code INTEGER,
+  second_code INTEGER,
+  amount REAL
+);

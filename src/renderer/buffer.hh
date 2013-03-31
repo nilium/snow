@@ -15,6 +15,7 @@ struct gl_state_t;
 *******************************************************************************/
 struct S_EXPORT rbuffer_t
 {
+  friend struct gl_state_t;
 
   /*****************************************************************************
   * After calling 'bind', you are expected to use glBufferSubData to load
@@ -66,7 +67,12 @@ struct S_EXPORT rbuffer_t
   // binding the buffer if it's already bound.
   // If the buffer has not already been generated, it will do so and resize the
   // buffer to the requested size.
-  void          bind();
+  inline void   bind() { bind_as(target_); }
+
+  // Binds the current buffer to a specific target, rather than the one the
+  // buffer was created with. If the buffer was not yet created, it will be
+  // created with this target rather than its initial target.
+  void          bind_as(GLenum alt_target);
 
   // Gets data from the buffer at offset of length and places it in data.
   // Implies bind if the buffer has been generated (generated() == true),

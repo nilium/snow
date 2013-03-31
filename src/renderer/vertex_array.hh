@@ -12,6 +12,7 @@ struct gl_state_t;
 
 struct S_EXPORT rvertex_array_t
 {
+  friend struct gl_state_t;
   using init_fn_t = std::function<bool(gl_state_t &)>;
 
   rvertex_array_t(gl_state_t &gl);

@@ -152,7 +152,7 @@ void rprogram_t::bind_uniform(int key, const string &name)
 GLint rprogram_t::uniform_location(int key) const
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to get uniform location: "
+    throw std::runtime_error("Unable to get uniform location (int): "
                              "program is invalid");
   } else if (!linked()) {
     return -1;
@@ -164,6 +164,27 @@ GLint rprogram_t::uniform_location(int key) const
   } else {
     return -1;
   }
+}
+
+
+
+/*==============================================================================
+    uniform_location
+
+    Description
+==============================================================================*/
+GLint rprogram_t::uniform_location(const string &name) const
+{
+  if (!valid()) {
+    throw std::runtime_error("Unable to get uniform location (string): "
+                             "program is invalid");
+  } else if (!linked()) {
+    return -1;
+  }
+
+  GLint loc = glGetUniformLocation(program_, name.c_str());
+  assert_gl("Getting uniform location by name");
+  return loc;
 }
 
 

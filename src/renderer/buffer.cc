@@ -120,7 +120,7 @@ void rbuffer_t::get_buffer(void *data, GLintptr offset, GLsizeiptr length)
 
 
 
-void rbuffer_t::bind()
+void rbuffer_t::bind_as(GLenum alt_target)
 {
   if (!valid())
     throw std::runtime_error("Called bind on invalid buffer");
@@ -128,11 +128,11 @@ void rbuffer_t::bind()
   if (!generated() && size_ > 0) {
     glGenBuffers(1, &buffer_);
     assert_gl("Failed to generate GL buffer.");
-    state_.bind_buffer(target_, buffer_);
-    glBufferData(target_, size_, NULL, usage_);
+    state_.bind_buffer(alt_target, buffer_);
+    glBufferData(alt_target, size_, NULL, usage_);
     assert_gl("Failed to initialize GL buffer");
   } else {
-    state_.bind_buffer(target_, buffer_);
+    state_.bind_buffer(alt_target, buffer_);
   }
 }
 

@@ -37,9 +37,12 @@ struct S_EXPORT client_t
   // Disconnects from the server (if connected)
   virtual void disconnect();
 
+  inline gl_state_t &gl_state() { return glstate_; }
+
 protected:
   virtual void terminate();
   virtual void run_frameloop();
+  virtual void frameloop();
   virtual void dispose();
 
 private:

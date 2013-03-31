@@ -322,11 +322,11 @@ GLuint gl_state_t::vertex_array() const
 ==============================================================================*/
 void gl_state_t::bind_vertex_array(const GLuint vao)
 {
-  if (array_object_ != vao) {
+  // if (array_object_ != vao) {
     glBindVertexArray(vao);
     assert_gl("Binding vertex array object");
     array_object_ = vao;
-  }
+  // }
 }
 
 
@@ -417,7 +417,7 @@ GLuint gl_state_t::texture_binding(const unsigned target) const
   const unsigned sgl_target = sgl_texture_target_to_gl(target);
   if (SGL_TEXTURE_TARGET_COUNT <= sgl_target)
     throw std::invalid_argument("Invalid texture target");
-  return texture_bindings_[active_texture_].binding[sgl_target];
+  return texture_bindings_[active_texture_ - GL_TEXTURE0].binding[sgl_target];
 }
 
 
@@ -433,12 +433,12 @@ void gl_state_t::bind_texture(const unsigned target, const GLuint texture)
   if (SGL_TEXTURE_TARGET_COUNT <= sgl_target)
     throw std::invalid_argument("Invalid texture target");
 
-  const GLuint last = texture_bindings_[active_texture_].binding[sgl_target];
-  if (last != texture) {
+  // const GLuint last = texture_bindings_[active_texture_ - GL_TEXTURE0].binding[sgl_target];
+  // if (last != texture) {
     glBindTexture(target, texture);
     assert_gl("Setting texture binding");
-    texture_bindings_[active_texture_].binding[sgl_target] = texture;
-  }
+    texture_bindings_[active_texture_ - GL_TEXTURE0].binding[sgl_target] = texture;
+  // }
 }
 
 

@@ -15,6 +15,8 @@ struct rshader_t;
 
 struct S_EXPORT rprogram_t
 {
+  friend struct gl_state_t;
+
   // For move semantics to work, program objects must share the same
   // gl_state_t, otherwise an exception will be thrown if assigning one shader
   // object to another when their state objects differ.
@@ -38,6 +40,8 @@ struct S_EXPORT rprogram_t
   // Returns the location of a previously-bound uniform's location. Returns -1
   // if no uniform location is found or the program is not linked.
   GLint           uniform_location(int key) const;
+  // Slower alternative: looks for the uniform location based on its actual name.
+  GLint           uniform_location(const string &name) const;
 
   void            bind_frag_out(GLuint colorNumber, const string &name);
   #if GL_VERSION_3_3 || GL_ARB_blend_func_extended

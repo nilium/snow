@@ -13,6 +13,7 @@ struct gl_state_t;
 struct S_EXPORT rshader_t
 {
   friend struct rprogram_t;
+  friend struct gl_state_t;
 
   rshader_t(gl_state_t &state, GLenum kind);
   rshader_t(rshader_t &&other);

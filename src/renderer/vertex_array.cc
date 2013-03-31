@@ -8,7 +8,7 @@ namespace snow {
 /*==============================================================================
   constructor (no initializer)
 
-    Description
+    Creates a VAO without an initializer function.
 ==============================================================================*/
 rvertex_array_t::rvertex_array_t(gl_state_t &gl)
 : state_(gl), initfn_(nullptr), inited_(false), name_(0)
@@ -20,7 +20,7 @@ rvertex_array_t::rvertex_array_t(gl_state_t &gl)
 /*==============================================================================
   constructor (with initializer)
 
-    Description
+    Creates a VAO with an initializer function.
 ==============================================================================*/
 rvertex_array_t::rvertex_array_t(gl_state_t &gl, init_fn_t &&initfn)
 : state_(gl), initfn_(initfn), inited_(false), name_(0)
@@ -32,7 +32,8 @@ rvertex_array_t::rvertex_array_t(gl_state_t &gl, init_fn_t &&initfn)
 /*==============================================================================
   move constructor
 
-    Description
+    Moves a VAO to this object.
+    The moved VAO is reset and may be reused as needed or safely destroyed.
 ==============================================================================*/
 rvertex_array_t::rvertex_array_t(rvertex_array_t &&other)
 : state_(other.state_), initfn_(std::move(other.initfn_)),
@@ -46,7 +47,8 @@ rvertex_array_t::rvertex_array_t(rvertex_array_t &&other)
 /*==============================================================================
   move assignment
 
-    Description
+    Moves a VAO to this object, unloading any existing VAO held by this one.
+    The moved VAO is reset and may be reused as needed or safely destroyed.
 ==============================================================================*/
 rvertex_array_t &rvertex_array_t::operator = (rvertex_array_t &&other)
 {
@@ -70,7 +72,7 @@ rvertex_array_t &rvertex_array_t::operator = (rvertex_array_t &&other)
 /*==============================================================================
   destructor
 
-    Description
+    Destroys the VAO.
 ==============================================================================*/
 rvertex_array_t::~rvertex_array_t()
 {
@@ -83,7 +85,8 @@ rvertex_array_t::~rvertex_array_t()
 /*==============================================================================
   set_initializer(nullptr_t)
 
-    Description
+    Removes the initializer function for the VAO. If the VAO was already loaded,
+    unload() will be called.
 ==============================================================================*/
 void rvertex_array_t::set_initializer(std::nullptr_t np)
 {
@@ -97,7 +100,8 @@ void rvertex_array_t::set_initializer(std::nullptr_t np)
 /*==============================================================================
   set_initializer(non-null function)
 
-    Description
+    Sets the initializer function for the VAO. If the VAO was already loaded,
+    unload() will be called.
 ==============================================================================*/
 void rvertex_array_t::set_initializer(init_fn_t &&initfn)
 {
@@ -110,7 +114,8 @@ void rvertex_array_t::set_initializer(init_fn_t &&initfn)
 /*==============================================================================
   load
 
-    Description
+    Initializes the vertex array object and then restores whatever previously
+    bound vertex array there was.
 ==============================================================================*/
 void rvertex_array_t::load()
 {
@@ -126,16 +131,16 @@ void rvertex_array_t::load()
 /*==============================================================================
   bind
 
-    Description
+    Binds the current vertex array object. On first binding, the VAO will be
+    loaded using the initializer function if one was provided.
 ==============================================================================*/
 void rvertex_array_t::bind()
 {
   if (name_ == 0 || !inited_) {
     force_load();
-    state_.bind_vertex_array(0);
+  } else {
+    state_.bind_vertex_array(name_);
   }
-
-  state_.bind_vertex_array(name_);
 }
 
 
@@ -143,12 +148,16 @@ void rvertex_array_t::bind()
 /*==============================================================================
   unload
 
-    Description
+    Releases any GL resources used by the VAO and marks the VAO as
+    uninitialized. The VAO will be re-initialized on next binding.
 ==============================================================================*/
 void rvertex_array_t::unload()
 {
   if (name_ != 0) {
     inited_ = false;
+    if (state_.vertex_array() == name_) {
+      state_.bind_vertex_array(0);
+    }
     glDeleteVertexArrays(1, &name_);
     assert_gl("Deleting vertex array object");
   }
@@ -159,7 +168,9 @@ void rvertex_array_t::unload()
 /*==============================================================================
   zero
 
-    Description
+    Zeroes out the VAO. This _does not_ unload resources used by the VAO. Do
+    not call it unless the VAO has been first unloaded or its resources are
+    being managed by another object (e.g., moved to another rvertex_array_t).
 ==============================================================================*/
 void rvertex_array_t::zero()
 {
@@ -172,7 +183,8 @@ void rvertex_array_t::zero()
 /*==============================================================================
   force_load
 
-    Description
+    Generates the VAO, binds it, and loads it using the initializer function if
+    one was provided.
 ==============================================================================*/
 void rvertex_array_t::force_load()
 {

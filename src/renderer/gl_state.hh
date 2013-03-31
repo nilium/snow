@@ -29,6 +29,37 @@ struct S_EXPORT gl_state_t
   gl_state_t &operator = (gl_state_t &&other) = delete;
 
 
+  inline bool operator == (const gl_state_t &other) const { return this == &other; }
+
+
+  // Note: requires T and Q to be friends of gl_state_t.
+  template <typename T, typename Q>
+  static bool compatible(const T& lhs, const Q& rhs)
+  {
+    return lhs.state_ == rhs.state_;
+  }
+
+  // Note: requires T to be a friend of gl_state_t.
+  template <typename T>
+  static bool compatible(const T& lhs, const gl_state_t& rhs)
+  {
+    return lhs.state_ == rhs;
+  }
+
+  // Note: requires T to be a friend of gl_state_t.
+  template <typename T>
+  static bool compatible(const gl_state_t& lhs, const T& rhs)
+  {
+    return lhs == rhs.state_;
+  }
+
+  // Note: requires T to be a friend of gl_state_t.
+  inline static bool compatible(const gl_state_t& lhs, const gl_state_t& rhs)
+  {
+    return lhs == rhs;
+  }
+
+
   // Call to initialize the state object.
   void      acquire();
 
