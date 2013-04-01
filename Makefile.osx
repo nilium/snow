@@ -1,7 +1,7 @@
 # Makefile.osx
 CFLAGS+= -DTARGET_OS_MAC
 CXXFLAGS+= -ObjC++
-CXXFLAGS+= -std=c++11 -stdlib=libc++
+CXXFLAGS+= -std=gnu++11 -stdlib=libc++
 
 LDFLAGS+= -framework OpenGL -framework Cocoa -framework IOKit
 LDFLAGS+= -lc++

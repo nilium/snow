@@ -5,8 +5,6 @@ ifeq ($(OS),Darwin)
 	TARGET=osx
 endif
 
-include Makefile.$(TARGET)
-
 APP_OUT=bin/snow
 
 CFLAGS+= -Wall
@@ -17,6 +15,7 @@ PKGCONFIG_LIBS=sqlite3 glfw3 libenet snow-common
 CFLAGS+= $(shell pkg-config --cflags $(PKGCONFIG_LIBS))
 LDFLAGS+= $(shell pkg-config --libs $(PKGCONFIG_LIBS))
 LDFLAGS+= -llua
+LDFLAGS+= -lphysfs
 
 ifeq ($(DEBUG),)
 	DEBUG=yes
@@ -29,6 +28,8 @@ else
 	CFLAGS+= -O3 -DNDEBUG
 endif
 
+include Makefile.$(TARGET)
+
 .PHONY: all clean deps Makefile.sources
 
 all: $(APP_OUT)
@@ -36,11 +37,10 @@ all: $(APP_OUT)
 deps:
 	./build-sources.rb --target $(TARGET) > Makefile.sources
 
-include Makefile.$(TARGET)
-include Makefile.sources
-
 clean:
 	$(RM) $(APP_OUT) $(OBJECTS)
+
+include Makefile.sources
 
 $(APP_OUT): $(OBJECTS)
 	$(CC) $(LDFLAGS) $(OBJECTS) -o $@
