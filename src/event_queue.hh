@@ -48,6 +48,9 @@ enum event_kind_t : int
 
 S_EXPORT const string &event_kind_string(event_kind_t kind);
 
+const int EVENT_SENDER_UNKNOWN = 0;
+const int EVENT_SENDER_WINDOW = -1;
+
 
 
 struct S_EXPORT button_event_t {
@@ -59,9 +62,13 @@ struct S_EXPORT button_event_t {
 
 struct S_EXPORT event_t
 {
-  GLFWwindow *window;
+  int sender_id;
+  union {
+    void *sender;
+    GLFWwindow *window;
+  };
   event_kind_t kind;
-
+  double time;
   union {
     button_event_t key;             // KEY_EVENT
     int            character;       // CHAR_EVENT
@@ -75,7 +82,19 @@ struct S_EXPORT event_t
     pointi_t       window_pos;      // WINDOW_MOVE_EVENT
     void          *opaque;          // OPAQUE_EVENT
   };
+
+  // If you know the sender_id is valid for this
+  template <typename T, int ID>
+  constexpr T *cast_sender() const;
 };
+
+
+
+template <typename T, int ID>
+constexpr T *event_t::cast_sender() const
+{
+  return (sender_id == ID ? (T *)sender : nullptr);
+}
 
 
 
@@ -143,22 +162,21 @@ std::ostream &operator << (std::ostream &out, const event_t &in)
 struct S_EXPORT event_queue_t
 {
   using event_list_t = std::deque<event_t>;
-  using shared_ptr = std::shared_ptr<event_queue_t>;
-  using weak_ptr = std::weak_ptr<event_queue_t>;
 
 
   event_queue_t();
-  virtual ~event_queue_t();
+  ~event_queue_t();
 
-  virtual bool          wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
-  virtual bool          peek_event(event_t &out) const;
-  virtual bool          poll_event(event_t &out);
-  virtual void          emit_event(const event_t &event);
+  bool          wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
+  bool          peek_event(event_t &out) const;
+  bool          poll_event(event_t &out);
+  bool          poll_event_before(event_t &out, double time);
+  void          emit_event(const event_t &event);
 
   // Get a copy of the event queue
-  virtual event_list_t  event_queue() const;
+  event_list_t  event_queue() const;
 
-  virtual void          set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
+  void          set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
 
 private:
   dispatch_queue_t  queue_;
