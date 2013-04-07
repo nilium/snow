@@ -11,6 +11,7 @@ namespace snow {
 struct database_t;
 struct dbresult_t;
 struct dbstatement_t;
+struct dbiterator_t;
 
 
 constexpr bool dbis_error_code(int code) {

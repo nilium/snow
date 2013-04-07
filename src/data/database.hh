@@ -39,8 +39,7 @@ struct database_t
     const string &path,
     bool throw_on_error = true,
     int flags = SQLITE_OPEN_READWRITE,
-    const string &vfs = ""              // Empty string = default VFS
-    );
+    const string &vfs = "");
   ~database_t();
 
   database_t(database_t &&);
@@ -49,9 +48,19 @@ struct database_t
   database_t &operator = (const database_t &) = delete;
   database_t &operator = (database_t &&) = delete;
 
-  inline static database_t temp_db() {
-    return database_t(":memory:");
-  }
+  // All *_physfs functions assume the PhysFS VFS has already been registered.
+  // Opens a database for reading only via PhysFS.
+  static database_t read_physfs(const string &path, bool throw_on_error = true);
+  // Opens a file for reading and writing. If the file does not exist in the
+  // write directory already, it will be created as if it didn't exist
+  // regardless of whether it's in the read-only path.
+  static database_t append_physfs(const string &path, bool throw_on_error = true);
+  // Creates a new file in the write directory specifically for storing user
+  // specific data, caches, etc. This will always create a new file.
+  static database_t create_physfs(const string &path, bool throw_on_error = true);
+
+  // Creates a temporary in-memory database.
+  static database_t temp_db();
 
   inline const string &error_msg() const { return error_msg_; }
   inline int error() const { return error_; }

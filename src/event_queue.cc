@@ -33,19 +33,19 @@ void ecb_window_iconify_event(GLFWwindow *window, int iconified);
 
 using event_name_map_t = std::map<event_kind_t, string>;
 const event_name_map_t g_event_names {
-  std::make_pair(NULL_EVENT,           STT("NULL_EVENT")),
-  std::make_pair(KEY_EVENT,            STT("KEY_EVENT")),
-  std::make_pair(CHAR_EVENT,           STT("CHAR_EVENT")),
-  std::make_pair(MOUSE_EVENT,          STT("MOUSE_EVENT")),
-  std::make_pair(MOUSE_MOVE_EVENT,     STT("MOUSE_MOVE_EVENT")),
-  std::make_pair(MOUSE_SCROLL_EVENT,   STT("MOUSE_SCROLL_EVENT")),
-  std::make_pair(MOUSE_ENTER_EVENT,    STT("MOUSE_ENTER_EVENT")),
-  std::make_pair(WINDOW_CLOSE_EVENT,   STT("WINDOW_CLOSE_EVENT")),
-  std::make_pair(WINDOW_FOCUS_EVENT,   STT("WINDOW_FOCUS_EVENT")),
-  std::make_pair(WINDOW_ICONIFY_EVENT, STT("WINDOW_ICONIFY_EVENT")),
-  std::make_pair(WINDOW_SIZE_EVENT,    STT("WINDOW_SIZE_EVENT")),
-  std::make_pair(WINDOW_MOVE_EVENT,    STT("WINDOW_MOVE_EVENT")),
-  std::make_pair(OPAQUE_EVENT,         STT("OPAQUE_EVENT")),
+  std::make_pair(NULL_EVENT,           "NULL_EVENT"),
+  std::make_pair(KEY_EVENT,            "KEY_EVENT"),
+  std::make_pair(CHAR_EVENT,           "CHAR_EVENT"),
+  std::make_pair(MOUSE_EVENT,          "MOUSE_EVENT"),
+  std::make_pair(MOUSE_MOVE_EVENT,     "MOUSE_MOVE_EVENT"),
+  std::make_pair(MOUSE_SCROLL_EVENT,   "MOUSE_SCROLL_EVENT"),
+  std::make_pair(MOUSE_ENTER_EVENT,    "MOUSE_ENTER_EVENT"),
+  std::make_pair(WINDOW_CLOSE_EVENT,   "WINDOW_CLOSE_EVENT"),
+  std::make_pair(WINDOW_FOCUS_EVENT,   "WINDOW_FOCUS_EVENT"),
+  std::make_pair(WINDOW_ICONIFY_EVENT, "WINDOW_ICONIFY_EVENT"),
+  std::make_pair(WINDOW_SIZE_EVENT,    "WINDOW_SIZE_EVENT"),
+  std::make_pair(WINDOW_MOVE_EVENT,    "WINDOW_MOVE_EVENT"),
+  std::make_pair(OPAQUE_EVENT,         "OPAQUE_EVENT"),
 };
 
 
@@ -273,14 +273,28 @@ bool event_queue_t::poll_event(event_t &out)
 bool event_queue_t::poll_event_before(event_t &out, double time)
 {
   bool set = false;
-  dispatch_barrier_sync(queue_, [&]() {
+  dispatch_barrier_sync(queue_, [&out, &set, this, time]() {
     if (!events_.empty()) {
-      const event_t &front = events_.front();
-      if (front.time < time) {
-        out = events_.front();
-        events_.pop_front();
-        set = true;
+      event_list_t::const_iterator iter;
+      event_list_t::const_iterator end = events_.cend();
+      if (last_time_ != time) {
+        iter = events_.cbegin();
+        last_time_ = time;
+      } else {
+        if (last_event_ == end) {
+          return;
+        }
+        iter = last_event_;
       }
+      for (; iter != end; ++iter) {
+        if (iter->time <= time) {
+          set = true;
+          out = *iter;
+          iter = events_.erase(iter);
+          break;
+        }
+      }
+      last_event_ = iter;
     }
   });
   return set;
@@ -293,6 +307,9 @@ void event_queue_t::emit_event(const event_t &event)
   const event_t copy = event;
   dispatch_barrier_async(queue_, [&, copy]() {
     events_.push_back(copy);
+    if (last_event_ == events_.cend()) {
+      --last_event_;
+    }
   });
 }
 
@@ -314,57 +331,57 @@ void event_queue_t::set_window_callbacks(GLFWwindow *window, int events_mask)
   glfwSetWindowUserPointer(window, (events_mask ? (void *)this : NULL));
 
   glfwSetKeyCallback(window,
-    (flag_check(events_mask, KEY_EVENT)
+    (flag_check(events_mask, KEY_EVENTS)
      ? ecb_key_event
      : NULL));
 
   glfwSetCharCallback(window,
-    (flag_check(events_mask, CHAR_EVENT)
+    (flag_check(events_mask, CHAR_EVENTS)
      ? ecb_char_event
      : NULL));
 
   glfwSetMouseButtonCallback(window,
-    (flag_check(events_mask, MOUSE_EVENT)
+    (flag_check(events_mask, MOUSE_EVENTS)
      ? ecb_mouse_event
      : NULL));
 
   glfwSetCursorPosCallback(window,
-    (flag_check(events_mask, MOUSE_MOVE_EVENT)
+    (flag_check(events_mask, MOUSE_MOVE_EVENTS)
      ? ecb_mouse_pos_event
      : NULL));
 
   glfwSetScrollCallback(window,
-    (flag_check(events_mask, MOUSE_SCROLL_EVENT)
+    (flag_check(events_mask, MOUSE_SCROLL_EVENTS)
      ? ecb_mouse_scroll_event
      : NULL));
 
   glfwSetCursorEnterCallback(window,
-    (flag_check(events_mask, MOUSE_ENTER_EVENT)
+    (flag_check(events_mask, MOUSE_ENTER_EVENTS)
      ? ecb_mouse_enter_event
      : NULL));
 
   glfwSetWindowCloseCallback(window,
-    (flag_check(events_mask, WINDOW_CLOSE_EVENT)
+    (flag_check(events_mask, WINDOW_CLOSE_EVENTS)
      ? ecb_window_close_event
      : NULL));
 
   glfwSetWindowPosCallback(window,
-    (flag_check(events_mask, WINDOW_MOVE_EVENT)
+    (flag_check(events_mask, WINDOW_MOVE_EVENTS)
      ? ecb_window_move_event
      : NULL));
 
   glfwSetWindowSizeCallback(window,
-    (flag_check(events_mask, WINDOW_SIZE_EVENT)
+    (flag_check(events_mask, WINDOW_SIZE_EVENTS)
      ? ecb_window_size_event
      : NULL));
 
   glfwSetWindowFocusCallback(window,
-    (flag_check(events_mask, WINDOW_FOCUS_EVENT)
+    (flag_check(events_mask, WINDOW_FOCUS_EVENTS)
      ? ecb_window_focus_event
      : NULL));
 
   glfwSetWindowIconifyCallback(window,
-    (flag_check(events_mask, WINDOW_ICONIFY_EVENT)
+    (flag_check(events_mask, WINDOW_ICONIFY_EVENTS)
      ? ecb_window_iconify_event
      : NULL));
 

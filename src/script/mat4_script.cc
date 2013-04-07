@@ -596,7 +596,7 @@ void lua_bind_mat4(lua_State *L)
 
 void lua_pushmat4(lua_State *L, const mat4f_t &m)
 {
-  const mat4_pool_t::index_t pool_index = g_mat4_pool.reserve_with(m);
+  const mat4_pool_t::index_t pool_index = g_mat4_pool.reserve(m);
   mat4_pool_t::index_t *obj_box;
   obj_box = (mat4_pool_t::index_t *)lua_newuserdata(L, sizeof(pool_index));
   *obj_box = pool_index;

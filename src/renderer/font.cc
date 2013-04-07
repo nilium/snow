@@ -1,5 +1,9 @@
+// font.cc -- Part of the Snow Engine
+// Copyright (c) 2013 Noel R. Cower. All rights reserved.
+
 #include "font.hh"
 #include "../data/database.hh"
+#include "../ext/utf8.h"
 #include "draw_2d.hh"
 #include <algorithm>
 
@@ -10,91 +14,187 @@ namespace snow {
 namespace {
 
 
-enum font_column_t : int {
-  // font_glyphs columns
-  KCODE=0,
-  KPAGE,
-  KFRAME_X,
-  KFRAME_Y,
-  KFRAME_WIDTH,
-  KFRAME_HEIGHT,
-  KADVANCE_X,
-  KADVANCE_Y,
-  KOFFSET_X,
-  KOFFSET_Y,
-
-  // font_info columns
-  KFONT_ID=0,
-  KPAGES,
-  KNUM_GLYPHS,
-  KNUM_KERNINGS,
-  KLINE_HEIGHT,
-  KLEADING,
-  KASCENT,
-  KDESCENT,
-  KPAGE_WIDTH,
-  KPAGE_HEIGHT,
-  KBBOX_MIN_X,
-  KBBOX_MAX_X,
-  KBBOX_MIN_Y,
-  KBBOX_MAX_Y,
-  KNAME,
-
-  // font_kernings columns
-  KFIRST_CODE=0,
-  KSECOND_CODE,
-  KAMOUNT
-};
-
-
+// SQL for getting a single font's info from a database
 const string font_info_query_string {
-  "select "
-  "font_id, "
-  "pages, "
-  "num_glyphs, "
-  "num_kernings, "
-  "line_height, "
-  "leading, "
-  "ascent, "
-  "descent, "
-  "page_width, "
-  "page_height, "
-  "bbox_min_x, "
-  "bbox_max_x, "
-  "bbox_min_y, "
-  "bbox_max_y "
-  " from font_info where name = ? limit 1"
+  "select * from font_info where name = :font_id limit 1"
 };
 
+// SQL for getting glyphs from a database
 const string font_glyph_query_string {
-  "select "
-  "code, "
-  "page, "
-  "frame_x, "
-  "frame_y, "
-  "frame_width, "
-  "frame_height, "
-  "advance_x, "
-  "advance_y, "
-  "offset_x, "
-  "offset_y "
-  " from font_glyphs where font_id = ?"
+  "select * from font_glyphs where font_id = :font_id"
 };
 
+// SQL for getting kernings from a database
 const string font_kern_query_string {
-  "select "
-  "first_code, "
-  "second_code, "
-  "amount "
-  " from font_kernings where font_id = ?"
+  "select * from font_kernings where font_id = :font_id"
 };
 
 
 } // namespace <anon>
 
 
+/*==============================================================================
+  ctor(db, name)
+
+    Constructs a font loaded from the database with the given name. If no such
+    font is found, an exception is thrown. In that case, the font is invalid
+    and you should not touch it ever again.
+==============================================================================*/
 rfont_t::rfont_t(database_t &db, const string &name) :
   name_(name)
+{
+  load_from_db(db);
+} // rfont_t::rfont_t()
+
+
+
+/*==============================================================================
+  dtor
+==============================================================================*/
+rfont_t::~rfont_t()
+{
+  name_.clear();
+  glyphs_.clear();
+  kerns_.clear();
+  pages_.clear();
+}
+
+
+
+/*==============================================================================
+  name
+
+    Returns the name of the font.
+==============================================================================*/
+const string &rfont_t::name() const
+{
+  return name_;
+}
+
+
+
+/*==============================================================================
+  font_page_count
+
+    Returns the number of font pages for this font.
+==============================================================================*/
+int rfont_t::font_page_count() const
+{
+  return pages_.size();
+}
+
+
+
+/*==============================================================================
+  set_font_page
+
+    Sets the font page to the given material.
+==============================================================================*/
+void rfont_t::set_font_page(int page, rmaterial_t *mat)
+{
+
+  pages_.at(page) = mat;
+}
+
+
+
+/*==============================================================================
+  font_page
+
+    Returns the font page for the given index (0..num_font_pages)
+==============================================================================*/
+rmaterial_t *rfont_t::font_page(int page) const
+{
+  return pages_.at(page);
+}
+
+
+
+/*==============================================================================
+  draw_text
+
+    Draws the given UTF-8 string on the screen at the given baseline. Does not
+    use screen-scaling.
+
+    TODO: add fix for screen-scaling
+==============================================================================*/
+void rfont_t::draw_text(
+  rdraw_2d_t &draw,
+  const vec2f_t &baseline,
+  const string &text,
+  float scale) const
+{
+  vec2f_t pos = {
+    baseline.x,
+    baseline.y + ascent_ * scale
+  };
+  vec2f_t head = pos;
+
+  uint32_t last_code = 0;
+  auto iter = text.begin();
+  auto str_end = utf8::find_invalid(iter, text.end());
+  auto glyph_end = glyphs_.cend();
+
+  while (iter != str_end) {
+    uint32_t code = utf8::next(iter, str_end);
+
+    if (code == '\n') {
+      last_code = -1;
+      head.y -= line_height_ * scale;
+      pos = head;
+      continue;
+    } else if (code < ' ') {
+      continue;
+    }
+
+    glyphmap_t::const_iterator glyph_iter = glyphs_.find(code);
+
+    if (glyph_iter != glyph_end) {
+      const glyph_t &glyph = glyph_iter->second;
+
+      pos.x += kern_for(last_code, code) * scale;
+
+      if (glyph.page < pages_.size()) {
+        rmaterial_t *page_mat = pages_[glyph.page];
+
+        if (glyph.size.x * glyph.size.y > 0) {
+          draw.draw_rect_raw(
+            pos + glyph.offset * scale, glyph.size * scale,
+            {255, 255, 255, 255},
+            page_mat,
+            glyph.uv_min, glyph.uv_max);
+        }
+      }
+
+      pos += glyph.advance * scale;
+    }
+  }
+}
+
+
+
+/*==============================================================================
+  kern_for
+
+    Returns the kerning for the provided glyphs (where the pair is
+    {first, second}). If no kerning exists for the pair, returns 0.
+==============================================================================*/
+float rfont_t::kern_for(uint32_t first, uint32_t second) const
+{
+  const auto kiter = kerns_.find({first, second});
+  if (kiter != kerns_.end())
+    return kiter->second;
+  return 0;
+}
+
+
+
+/*==============================================================================
+  load_from_db
+
+    Loads the font from the database.
+==============================================================================*/
+void rfont_t::load_from_db(database_t &db)
 {
   if (!db.is_open()) {
     throw std::invalid_argument("Database is not open");
@@ -106,29 +206,30 @@ rfont_t::rfont_t(database_t &db, const string &name) :
 
   try {
     int font_id = INT_MIN;    // Font row ID in the database
-    vec2f_t page_scale = vec2f_t::zero;
+    unsigned num_glyphs, num_kerns;
 
     // Look for font info for the given name, throw exception if none found
     {
       dbstatement_t info_query = db.prepare(font_info_query_string);
-      info_query.bind_text_static(1, name);
+      info_query.bind_text_static(":font_id", name_);
 
-      info_query.execute([&](dbresult_t &fir) {
-        font_id      = fir.column_int(KFONT_ID);
-        line_height_ = fir.column_float(KLINE_HEIGHT);
-        leading_     = fir.column_float(KLEADING);
-        ascent_      = fir.column_float(KASCENT);
-        descent_     = fir.column_float(KDESCENT);
-        bbox_min_    = { fir.column_float(KBBOX_MIN_X), fir.column_float(KBBOX_MIN_Y) };
-        bbox_max_    = { fir.column_float(KBBOX_MAX_X), fir.column_float(KBBOX_MAX_Y) };
-        pages_.resize(fir.column_int(KPAGES));
+      for (dbresult_t &fir : info_query) {
+        font_id      = fir.column_int("font_id");
+        line_height_ = fir.column_float("line_height");
+        leading_     = fir.column_float("leading");
+        ascent_      = fir.column_float("ascent");
+        descent_     = fir.column_float("descent");
+        bbox_min_    = { fir.column_float("bbox_min_x"), fir.column_float("bbox_min_y") };
+        bbox_max_    = { fir.column_float("bbox_max_x"), fir.column_float("bbox_max_y") };
+        pages_.resize(fir.column_uint("pages"));
         page_size_   = {
-          fir.column_int(KPAGE_WIDTH),
-          fir.column_int(KPAGE_HEIGHT)
+          fir.column_uint("page_width"),
+          fir.column_uint("page_height")
         };
-        page_scale   = page_size_;
-        page_scale.invert();
-      });
+
+        num_glyphs   = fir.column_uint("num_glyphs");
+        num_kerns    = fir.column_uint("num_kernings");
+      }
     }
 
     // Crap pants if no font found.
@@ -136,70 +237,17 @@ rfont_t::rfont_t(database_t &db, const string &name) :
       throw std::invalid_argument("No font with given name found");
     }
 
-    // Load glyphs
-    {
-      dbstatement_t glyph_query = db.prepare(font_glyph_query_string);
-      glyph_query.bind_int(1, font_id);
-
-      glyph_query.execute([&](dbresult_t &fgr) {
-        rfont_t::glyph_t glyph;
-
-        glyph.page = fgr.column_int(KPAGE);
-        glyph.uv_min = {
-          fgr.column_float(KFRAME_X),
-          fgr.column_float(KFRAME_Y)
-        };
-        glyph.uv_max = {
-          fgr.column_float(KFRAME_WIDTH),
-          fgr.column_float(KFRAME_HEIGHT)
-        };
-        glyph.advance = {
-          fgr.column_float(KADVANCE_X),
-          fgr.column_float(KADVANCE_Y)
-        };
-        glyph.offset = {
-          fgr.column_float(KOFFSET_X),
-          fgr.column_float(KOFFSET_Y)
-        };
-
-        // Round the glyph frame to its pixel edges
-        glyph.uv_max   += glyph.uv_min;
-
-        glyph.uv_min.x = std::floor(glyph.uv_min.x);
-        glyph.uv_min.y = std::floor(glyph.uv_min.y);
-
-        glyph.uv_max.x = std::ceil(glyph.uv_max.x);
-        glyph.uv_max.y = std::ceil(glyph.uv_max.y);
-
-        glyph.size     = glyph.uv_max - glyph.uv_min;
-
-        glyph.uv_min   *= page_scale;
-        glyph.uv_max   *= page_scale;
-        glyph.uv_min.y = 1.0f - glyph.uv_min.y;
-        glyph.uv_max.y = 1.0f - glyph.uv_max.y;
-        std::swap(glyph.uv_min.y, glyph.uv_max.y);
-
-
-        glyphs_.insert({
-          fgr.column_int(KCODE),
-          glyph
-        });
-      });
+    // Load kerns/glyphs as needed
+    if (num_glyphs) {
+      load_glyphs_from_db(db, font_id);
     }
 
-    // Load kernings
-    {
-      dbstatement_t kern_query = db.prepare(font_kern_query_string);
-      kern_query.bind_int(1, font_id);
-      kern_query.execute([&](dbresult_t &fkr) {
-        kerns_.insert({
-          // First/second glyph pair
-          { fkr.column_int(KFIRST_CODE), fkr.column_int(KSECOND_CODE) },
-          // Kerning for glyph pair
-          fkr.column_float(KAMOUNT)
-        });
-      });
+    if (num_kerns) {
+      load_kerns_from_db(db, font_id);
     }
+
+    // TODO: Load page materials (<NAME>_<PAGENUM>.png)
+    // pages[N] = get_material(...);
 
     db.set_throw_on_error(throw_reset);
   // end try
@@ -208,73 +256,93 @@ rfont_t::rfont_t(database_t &db, const string &name) :
     db.set_throw_on_error(throw_reset);
     throw;
   }
-} // rfont_t::rfont_t()
-
-
-
-rfont_t::~rfont_t()
-{
-  name_.clear();
-  glyphs_.clear();
-  kerns_.clear();
-  pages_.clear();
 }
 
 
 
-void rfont_t::set_font_page(int page, rmaterial_t *mat)
+/*==============================================================================
+  load_glyphs_from_db
+
+    Loads glyphs for the given font_id from the database.
+==============================================================================*/
+void rfont_t::load_glyphs_from_db(database_t &db, const int font_id)
 {
-  pages_.resize(std::max((size_t)page + 1, pages_.size()));
-  pages_[page] = mat;
+  dbstatement_t glyph_query = db.prepare(font_glyph_query_string);
+  glyph_query.bind_int(":font_id", font_id);
+
+  vec2f_t page_scale = ((vec2f_t)page_size_).inverse();
+
+  for (auto &fgr : glyph_query) {
+    rfont_t::glyph_t glyph;
+
+    glyph.page   = fgr.column_uint("page");
+    // Round the glyph values to its pixel edges so they're used without
+    // odd filtering issues.
+    glyph.uv_min = {
+      std::floor(fgr.column_float("frame_x")),
+      std::floor(fgr.column_float("frame_y"))
+    };
+    glyph.uv_max = glyph.uv_min + vec2f_t::make(
+      std::ceil(fgr.column_float("frame_width")),
+      std::ceil(fgr.column_float("frame_height"))
+    );
+    glyph.size    = glyph.uv_max - glyph.uv_min;
+    glyph.advance = {
+      std::floor(fgr.column_float("advance_x")),
+      std::floor(fgr.column_float("advance_y"))
+    };
+    glyph.offset  = {
+      std::floor(fgr.column_float("offset_x")),
+      std::floor(fgr.column_float("offset_y"))
+    };
+
+    glyph.uv_min   *= page_scale;
+    glyph.uv_max   *= page_scale;
+    glyph.uv_min.y = 1.0f - glyph.uv_min.y;
+    glyph.uv_max.y = 1.0f - glyph.uv_max.y;
+    // And swap the min/max V coordinates
+    std::swap(glyph.uv_min.y, glyph.uv_max.y);
+
+    glyphs_.insert({
+      fgr.column_uint("code"),
+      glyph
+    });
+  }
 }
 
 
 
-rmaterial_t *rfont_t::font_page(int page) const
+/*==============================================================================
+  load_kerns_from_db
+
+    Loads kernings for the given font_id from the given database. Will skip
+    kernings for glyphs not in the font already.
+==============================================================================*/
+void rfont_t::load_kerns_from_db(database_t &db, const int font_id)
 {
-  return pages_[page];
-}
+  dbstatement_t kern_query = db.prepare(font_kern_query_string);
+  kern_query.bind(":font_id", font_id);
+  const auto kterm = kerns_.cend();
+  const auto gterm = glyphs_.cend();
+  for (auto &fkr : kern_query) {
+    const uint32_t first = fkr.column_uint("first_code");
+    const uint32_t second = fkr.column_uint("second_code");
+    const float amount = fkr.column_float("amount");
+    const std::pair<uint32_t, uint32_t> code_pair { first, second };
 
-
-
-void rfont_t::draw_text(
-  rdraw_2d &draw,
-  const vec2f_t &baseline,
-  const string &text,
-  float scale) const
-{
-  vec2f_t loc = {
-    baseline.x,
-    baseline.y - ascent_ * scale
-  };
-  vec2f_t head = loc;
-  int last_code = -1;
-  for (int code : text) {
-    if (code == '\n') {
-      last_code = -1;
-      head.y -= line_height_ * scale;
-      loc = head;
-    }
-
-    if (code < ' ')
+    if (kerns_.find(code_pair) != kterm ||
+        glyphs_.find(first) == gterm ||
+        glyphs_.find(second) == gterm) {
+      s_log_note("Skipping kerning for glyph pair <%u, %u>", first, second);
       continue;
-
-    const auto iter = glyphs_.find(code);
-    const glyph_t &glyph = iter->second;
-
-    loc.x += kern_for(last_code, code) * scale;
-
-    if (glyph.page >= 0) {
-      rmaterial_t *page_mat = pages_[glyph.page];
-      if (glyph.size.x * glyph.size.y > 0) {
-        draw.draw_rect_raw(
-          loc + glyph.offset * scale, glyph.size * scale,
-          {255, 255, 255, 255},
-          page_mat,
-          glyph.uv_min, glyph.uv_max);
-      }
     }
-    loc += glyph.advance * scale;
+
+    kerns_.insert({
+      // First/second glyph pair
+      code_pair,
+      // Kerning for glyph pair
+      amount
+    });
   }
 }
 

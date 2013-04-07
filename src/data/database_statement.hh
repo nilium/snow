@@ -3,21 +3,25 @@
 
 #include "database_local.hh"
 #include "database_result.hh"
+#include "database_iterator.hh"
+#include <iterator>
 #include <map>
 
 
 namespace snow {
 
 
+struct dbiterator_t;
+
+
 struct dbstatement_t
 {
   using free_fn_t = void (*)(void *);
-
+  using iterator = dbiterator_t;
 
   dbstatement_t(dbstatement_t &&);
   ~dbstatement_t();
 
-  dbstatement_t() = delete;
   dbstatement_t(const dbstatement_t &) = delete;
   dbstatement_t &operator =  (dbstatement_t &&) = delete;
   dbstatement_t &operator =  (const dbstatement_t &) = delete;
@@ -30,69 +34,56 @@ struct dbstatement_t
   int execute(const dbresult_t::result_fn_t &fn);
   inline int execute(std::nullptr_t np) { return execute(); }
 
+  iterator begin();
+  iterator end();
+
+  int num_columns() const;
+  const string &column_name(int index) const;
+  int column_index(const string &name) const;
+
+  // Untyped bindings (indexed)
+  int bind(int index, int v);
+  int bind(int index, int64_t v);
+  int bind(int index, float v);
+  int bind(int index, double v);
+  int bind(int index, const string &v);
+  int bind(int index, std::nullptr_t v);
+
+  // Unntyped bindings (named)
+  int bind(const string &name, int v);
+  int bind(const string &name, int64_t v);
+  int bind(const string &name, float v);
+  int bind(const string &name, double v);
+  int bind(const string &name, const string &v);
+  int bind(const string &name, std::nullptr_t v);
+
   // Index bindings
   int bind_null(int index);
   int bind_int(int index, int);
   int bind_int64(int index, int64_t);
+  int bind_uint(int index, int);
+  int bind_uint64(int index, int64_t);
   int bind_double(int index, double);
   int bind_text(int index, const char *str, int byte_size, free_fn_t freefn);
   int bind_text16(int index, const void *str16, int byte_size, free_fn_t freefn);
   int bind_blob(int index, const void *blob, int byte_size, free_fn_t freefn);
 
-  // Named bindings
-  inline int bind_null(const string &name)
-  {
-    return bind_null(binding_index(name));
-  }
-  inline int bind_int(const string &name, int val)
-  {
-    return bind_int(binding_index(name), val);
-  }
-  inline int bind_int64(const string &name, int64_t val)
-  {
-    return bind_int64(binding_index(name), val);
-  }
-  inline int bind_double(const string &name, double dbl)
-  {
-    return bind_double(binding_index(name), dbl);
-  }
-  inline int bind_text(const string &name, const char *str, int byte_size, free_fn_t freefn)
-  {
-    return bind_text(binding_index(name), str, byte_size, freefn);
-  }
-  inline int bind_text16(const string &name, const void *str16, int byte_size, free_fn_t freefn)
-  {
-    return bind_text16(binding_index(name), str16, byte_size, freefn);
-  }
-  inline int bind_blob(const string &name, const void *blob, int byte_size, free_fn_t freefn)
-  {
-    return bind_blob(binding_index(name), blob, byte_size, freefn);
-  }
+  // Named bindings (same as bind_*(binding_index(name), ...))
+  int bind_null(const string &name);
+  int bind_int(const string &name, int val);
+  int bind_int64(const string &name, int64_t val);
+  int bind_double(const string &name, double dbl);
+  int bind_text(const string &name, const char *str, int byte_size, free_fn_t freefn);
+  int bind_text16(const string &name, const void *str16, int byte_size, free_fn_t freefn);
+  int bind_blob(const string &name, const void *blob, int byte_size, free_fn_t freefn);
 
-  inline int bind_float(int index, float flt)
-  {
-    return bind_double(index, (double)flt);
-  }
-
-  inline int bind_text_copy(int index, const string &str)
-  {
-    return bind_text(index, str.c_str(), str.size(), (free_fn_t)SQLITE_TRANSIENT);
-  }
-
-  inline int bind_text_static(int index, const string &str)
-  {
-    return bind_text(index, str.c_str(), str.size(), (free_fn_t)SQLITE_STATIC);
-  }
-
-  inline int bind_float(const string &name, float flt)
-  {
-    return bind_double(name, (double)flt);
-  }
-
-  inline int bind_text(const string &name, const string &str)
-  {
-    return bind_text(name, str.c_str(), str.size(), (free_fn_t)SQLITE_TRANSIENT);
-  }
+  // Convenience functions
+  int bind_float(int index, float flt);
+  int bind_text_copy(int index, const string &str);
+  int bind_text_static(int index, const string &str);
+  int bind_float(const string &name, float flt);
+  int bind_text_copy(const string &name, const string &str);
+  int bind_text_static(const string &name, const string &str);
 
 
   int binding_index(const string &name);
@@ -102,13 +93,21 @@ struct dbstatement_t
 private:
   friend struct database_t;
   friend struct dbresult_t;
+  friend struct dbiterator_t;
 
   dbstatement_t(database_t &db, const string &sql);
   void finalize_nothrow();
 
+  int reset();
+  int step();
+
+  bool end_;
   database_t &db_;
   sqlite3_stmt *stmt_;
+  int num_columns_;
   std::map<string, int> bind_vars_;
+  std::map<string, int> column_names_;
+  int sequence_;
 };
 
 

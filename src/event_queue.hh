@@ -1,52 +1,71 @@
 #ifndef __SNOW_EVENT_QUEUE_HH__
 #define __SNOW_EVENT_QUEUE_HH__
 
-#include <deque>
+#include <list>
 #include <iomanip>
 #include <iostream>
 #include <memory>
 
 #include <dispatch/dispatch.h>
-#include <gl/glfw3.h>
 
-#include "snow-config.hh"
+#include <snow/config.hh>
 #include <snow/types/types_2d.hh>
+#include "renderer/sgl.hh"
 
 
 namespace snow {
 
 
+enum event_flag_t : int
+{
+  NULL_EVENTS           = 0,
+  KEY_EVENTS            = 0x1 << 0,
+  CHAR_EVENTS           = 0x1 << 1,
+  MOUSE_EVENTS          = 0x1 << 2,
+  MOUSE_MOVE_EVENTS     = 0x1 << 3,
+  MOUSE_SCROLL_EVENTS   = 0x1 << 4,
+  MOUSE_ENTER_EVENTS    = 0x1 << 5,
+  WINDOW_CLOSE_EVENTS   = 0x1 << 6,
+  WINDOW_FOCUS_EVENTS   = 0x1 << 7,
+  WINDOW_ICONIFY_EVENTS = 0x1 << 8,
+  WINDOW_SIZE_EVENTS    = 0x1 << 9,
+  WINDOW_MOVE_EVENTS    = 0x1 << 10,
+  OPAQUE_EVENTS         = 0x1 << 11,
+  ALL_KEY_EVENTS        = (KEY_EVENTS | CHAR_EVENTS),
+  ALL_MOUSE_EVENTS      = (MOUSE_EVENTS |
+                          MOUSE_MOVE_EVENTS |
+                          MOUSE_SCROLL_EVENTS |
+                          MOUSE_ENTER_EVENTS),
+  ALL_WINDOW_EVENTS     = (WINDOW_CLOSE_EVENTS |
+                          WINDOW_FOCUS_EVENTS |
+                          WINDOW_ICONIFY_EVENTS |
+                          WINDOW_SIZE_EVENTS |
+                          WINDOW_MOVE_EVENTS),
+  ALL_EVENT_KINDS       = (~NULL_EVENTS)
+};
+
+
 enum event_kind_t : int
 {
-  NULL_EVENT           = 0,
-  KEY_EVENT            = 0x1 << 0,
-  CHAR_EVENT           = 0x1 << 1,
-  MOUSE_EVENT          = 0x1 << 2,
-  MOUSE_MOVE_EVENT     = 0x1 << 3,
-  MOUSE_SCROLL_EVENT   = 0x1 << 4,
-  MOUSE_ENTER_EVENT    = 0x1 << 5,
-  WINDOW_CLOSE_EVENT   = 0x1 << 6,
-  WINDOW_FOCUS_EVENT   = 0x1 << 7,
-  WINDOW_ICONIFY_EVENT = 0x1 << 8,
-  WINDOW_SIZE_EVENT    = 0x1 << 9,
-  WINDOW_MOVE_EVENT    = 0x1 << 10,
-  OPAQUE_EVENT         = 0x1 << 11,
-  ALL_KEY_EVENTS       = (KEY_EVENT | CHAR_EVENT),
-  ALL_MOUSE_EVENTS     = (MOUSE_EVENT |
-                          MOUSE_MOVE_EVENT |
-                          MOUSE_SCROLL_EVENT |
-                          MOUSE_ENTER_EVENT),
-  ALL_WINDOW_EVENTS    = (WINDOW_CLOSE_EVENT |
-                          WINDOW_FOCUS_EVENT |
-                          WINDOW_ICONIFY_EVENT |
-                          WINDOW_SIZE_EVENT |
-                          WINDOW_MOVE_EVENT),
-  ALL_EVENT_KINDS      = (~NULL_EVENT)
+  NULL_EVENT = 0,
+  KEY_EVENT,
+  CHAR_EVENT,
+  MOUSE_EVENT,
+  MOUSE_MOVE_EVENT,
+  MOUSE_SCROLL_EVENT,
+  MOUSE_ENTER_EVENT,
+  WINDOW_CLOSE_EVENT,
+  WINDOW_FOCUS_EVENT,
+  WINDOW_ICONIFY_EVENT,
+  WINDOW_SIZE_EVENT,
+  WINDOW_MOVE_EVENT,
+  OPAQUE_EVENT,
+  NET_EVENT,
 };
 
 
 
-S_EXPORT const string &event_kind_string(event_kind_t kind);
+S_EXPORT const string &event_kind_string(int kind);
 
 const int EVENT_SENDER_UNKNOWN = 0;
 const int EVENT_SENDER_WINDOW = -1;
@@ -60,6 +79,8 @@ struct S_EXPORT button_event_t {
 
 
 
+struct netevent_t;
+
 struct S_EXPORT event_t
 {
   int sender_id;
@@ -67,7 +88,7 @@ struct S_EXPORT event_t
     void *sender;
     GLFWwindow *window;
   };
-  event_kind_t kind;
+  int kind;
   double time;
   union {
     button_event_t key;             // KEY_EVENT
@@ -80,7 +101,8 @@ struct S_EXPORT event_t
     bool           iconified;       // WINDOW_ICONIFY_EVENT
     dimensi_t      window_size;     // WINDOW_SIZE_EVENT
     pointi_t       window_pos;      // WINDOW_MOVE_EVENT
-    void          *opaque;          // OPAQUE_EVENT
+    void *         opaque;          // OPAQUE_EVENT
+    netevent_t *   net;
   };
 
   // If you know the sender_id is valid for this
@@ -161,7 +183,7 @@ std::ostream &operator << (std::ostream &out, const event_t &in)
 
 struct S_EXPORT event_queue_t
 {
-  using event_list_t = std::deque<event_t>;
+  using event_list_t = std::list<event_t>;
 
 
   event_queue_t();
@@ -181,6 +203,8 @@ struct S_EXPORT event_queue_t
 private:
   dispatch_queue_t  queue_;
   event_list_t      events_;
+  double            last_time_ = 0;
+  event_list_t::const_iterator last_event_;
 };
 
 

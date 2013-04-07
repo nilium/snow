@@ -13,7 +13,7 @@ constexpr size_t DEFAULT_VERTEX_CAPACITY = DEFAULT_FACE_CAPACITY * 2;
 
 
 
-rdraw_2d::rdraw_2d(gl_state_t &gl)
+rdraw_2d_t::rdraw_2d_t(gl_state_t &gl)
 : state_(gl),
   transform_(mat3f_t::identity),
   scale_(vec2f_t::one),
@@ -22,21 +22,17 @@ rdraw_2d::rdraw_2d(gl_state_t &gl)
   screen_size_({800, 600}),
   rotation_(0),
   transform_dirty_(false),
-  vpositions_(),
-  vtexcoords_(),
-  vcolors_(),
+  vertices_(),
   faces_(),
   stages_()
 {
-  vpositions_.reserve(DEFAULT_VERTEX_CAPACITY);
-  vtexcoords_.reserve(DEFAULT_VERTEX_CAPACITY);
-  vcolors_.reserve(DEFAULT_VERTEX_CAPACITY);
+  vertices_.reserve(DEFAULT_VERTEX_CAPACITY);
   faces_.reserve(DEFAULT_FACE_CAPACITY);
 }
 
 
 
-rdraw_2d::rdraw_2d(rdraw_2d &&other) :
+rdraw_2d_t::rdraw_2d_t(rdraw_2d_t &&other) :
   state_(other.state_),
   transform_(other.transform_),
   scale_(other.scale_),
@@ -45,9 +41,7 @@ rdraw_2d::rdraw_2d(rdraw_2d &&other) :
   screen_size_(other.screen_size_),
   rotation_(other.rotation_),
   transform_dirty_(other.transform_dirty_),
-  vpositions_(std::move(other.vpositions_)),
-  vtexcoords_(std::move(other.vtexcoords_)),
-  vcolors_(std::move(other.vcolors_)),
+  vertices_(std::move(other.vertices_)),
   faces_(std::move(other.faces_)),
   stages_(std::move(other.stages_))
 {
@@ -56,7 +50,7 @@ rdraw_2d::rdraw_2d(rdraw_2d &&other) :
 
 
 
-rdraw_2d &rdraw_2d::operator = (const rdraw_2d &other)
+rdraw_2d_t &rdraw_2d_t::operator = (const rdraw_2d_t &other)
 {
   if (&other != this) {
     transform_ = other.transform_;
@@ -66,9 +60,7 @@ rdraw_2d &rdraw_2d::operator = (const rdraw_2d &other)
     screen_size_ = other.screen_size_;
     rotation_ = other.rotation_;
     transform_dirty_ = other.transform_dirty_;
-    vpositions_ = other.vpositions_;
-    vtexcoords_ = other.vtexcoords_;
-    vcolors_ = other.vcolors_;
+    vertices_ = other.vertices_;
     faces_ = other.faces_;
     stages_ = other.stages_;
   }
@@ -77,7 +69,7 @@ rdraw_2d &rdraw_2d::operator = (const rdraw_2d &other)
 
 
 
-rdraw_2d &rdraw_2d::operator = (rdraw_2d &&other)
+rdraw_2d_t &rdraw_2d_t::operator = (rdraw_2d_t &&other)
 {
   if (&other != this) {
     if (!gl_state_t::compatible(*this, other)) {
@@ -91,9 +83,7 @@ rdraw_2d &rdraw_2d::operator = (rdraw_2d &&other)
     screen_size_ = other.screen_size_;
     rotation_ = other.rotation_;
     transform_dirty_ = other.transform_dirty_;
-    vpositions_ = std::move(other.vpositions_);
-    vtexcoords_ = std::move(other.vtexcoords_);
-    vcolors_ = std::move(other.vcolors_);
+    vertices_ = std::move(other.vertices_);
     faces_ = std::move(other.faces_);
     stages_ = std::move(other.stages_);
 
@@ -104,7 +94,7 @@ rdraw_2d &rdraw_2d::operator = (rdraw_2d &&other)
 
 
 
-void rdraw_2d::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices, GLintptr ib_where)
+void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices, GLintptr ib_where)
 {
   constexpr float Z_MIN = -10;
   constexpr float Z_MAX = 10;
@@ -152,54 +142,53 @@ void rdraw_2d::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices, 
       assert_gl("Drawing 2D elements");
     }
   }
+
+  state_.bind_vertex_array(0);
 }
 
 
 
-void rdraw_2d::build_vertex_array(rvertex_array_t &vao,
-                                  GLuint pos_attrib, GLuint tex_attrib,
-                                  GLuint col_attrib, rbuffer_t &vertices,
-                                  GLintptr vb_where, rbuffer_t &indices,
-                                  GLintptr ib_where, bool restore_vao)
+void rdraw_2d_t::buffer_vertices(rbuffer_t &buffer, GLintptr vb_where)
 {
-  const GLsizeiptr pb_size = positions_buffer_size();
-  const GLsizeiptr tb_size = texcoords_buffer_size();
-  const GLsizeiptr cb_size = colors_buffer_size();
-  const GLsizeiptr ib_size = index_buffer_size();
-  const GLintptr tb_where  = vb_where + pb_size;
-  const GLintptr cb_where  = tb_where + tb_size;
+  const GLsizeiptr vb_size = vertex_buffer_size();
+  const GLintptr vb_max  = vb_where + vb_size;
 
-  // Make sure GL states are compatible
-  if (!(gl_state_t::compatible(indices, state_) &&
-        gl_state_t::compatible(vertices, state_) &&
-        gl_state_t::compatible(vao, state_))) {
-    throw std::invalid_argument("Incompatible GL states for buffer objects");
-  }
-
-  if (cb_where + cb_size > vertices.size()) {
-    vertices.resize(cb_where + cb_size, true);
-  }
-
-  if (ib_where + ib_size > indices.size()) {
-    indices.resize(ib_where + ib_size, true);
+  if (vb_max > buffer.size()) {
+    buffer.resize(vb_max, true);
   }
 
   // Buffer vertex data:
-  vertices.bind_as(GL_ARRAY_BUFFER);
+  buffer.bind_as(GL_ARRAY_BUFFER);
   // positions
-  glBufferSubData(GL_ARRAY_BUFFER, vb_where, pb_size, vpositions_.data());
-  assert_gl("Buffering 2D vertex positions");
-  // texcoords
-  glBufferSubData(GL_ARRAY_BUFFER, tb_where, tb_size, vtexcoords_.data());
-  assert_gl("Buffering 2D vertex texture coords");
-  // colors
-  glBufferSubData(GL_ARRAY_BUFFER, cb_where, cb_size, vcolors_.data());
-  assert_gl("Buffering 2D vertex colors");
+  glBufferSubData(GL_ARRAY_BUFFER, vb_where, vb_size, vertices_.data());
+  assert_gl("Buffering 2D vertices");
+}
 
+
+
+void rdraw_2d_t::buffer_indices(rbuffer_t &buffer, GLintptr ib_where)
+{
   // Buffer indices:
-  indices.bind_as(GL_ELEMENT_ARRAY_BUFFER);
+  const GLsizeiptr ib_size = index_buffer_size();
+  const GLintptr ib_max = ib_where + ib_size;
+
+  if (ib_max > buffer.size()) {
+    buffer.resize(ib_max, true);
+  }
+
+  buffer.bind_as(GL_ELEMENT_ARRAY_BUFFER);
   glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, ib_where, ib_size, faces_.data());
   assert_gl("Buffering 2D indices");
+}
+
+
+
+rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
+  const GLuint tex_attrib, const GLuint col_attrib, rbuffer_t &vertices,
+  const GLintptr vb_where, const bool restore_vao)
+{
+  // Make sure GL states are compatible
+  rvertex_array_t vao(state_);
 
   // Build vao without initializer
   auto previous_vao = (restore_vao ? state_.vertex_array() : 0);
@@ -211,66 +200,52 @@ void rdraw_2d::build_vertex_array(rvertex_array_t &vao,
   state_.set_attrib_array_enabled(tex_attrib, true);
 
   // Bind vertex attributes to buffer offsets
-  glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)vb_where);
+  glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE,
+    (sizeof(vertex_t) - sizeof(vertex_t::position)),
+    (const GLvoid *)(vb_where + offsetof(vertex_t, position)));
   assert_gl("Setting vertex position attrib");
-  glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, 0, (const GLvoid *)tb_where);
+  glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE,
+    (sizeof(vertex_t) - sizeof(vertex_t::texcoord)),
+    (const GLvoid *)(vb_where + offsetof(vertex_t, texcoord)));
   assert_gl("Setting vertex texture coords attrib");
-  glVertexAttribPointer(col_attrib, 4, GL_UNSIGNED_BYTE, GL_TRUE, 0, (const GLvoid *)cb_where);
+  glVertexAttribPointer(col_attrib, 4, GL_UNSIGNED_BYTE, GL_TRUE,
+    (sizeof(vertex_t) - sizeof(vertex_t::color)),
+    (const GLvoid *)(vb_where + offsetof(vertex_t, color)));
   assert_gl("Setting vertex color attrib");
 
   // reset VAO binding
   if (restore_vao)
     state_.bind_vertex_array(previous_vao);
+
+  return vao;
 }
 
 
 
-GLsizeiptr rdraw_2d::positions_buffer_size() const
+GLsizeiptr rdraw_2d_t::vertex_buffer_size() const
 {
-  return vpositions_.size() * sizeof(vbuffer_t::value_type);
+  return vertices_.size() * sizeof(vertex_t);
 }
 
 
 
-GLsizeiptr rdraw_2d::colors_buffer_size() const
-{
-  return vcolors_.size() * sizeof(cbuffer_t::value_type);
-}
-
-
-
-GLsizeiptr rdraw_2d::texcoords_buffer_size() const
-{
-  return vtexcoords_.size() * sizeof(vbuffer_t::value_type);
-}
-
-
-
-GLsizeiptr rdraw_2d::vertex_buffer_size() const
-{
-  return positions_buffer_size() + texcoords_buffer_size();
-}
-
-
-
-GLsizeiptr rdraw_2d::index_buffer_size() const
+GLsizeiptr rdraw_2d_t::index_buffer_size() const
 {
   return faces_.size() * sizeof(fbuffer_t::value_type);
 }
 
 
 
-void rdraw_2d::clear()
+void rdraw_2d_t::clear()
 {
-  vpositions_.clear();
-  vtexcoords_.clear();
+  vertices_.clear();
   faces_.clear();
   stages_.clear();
 }
 
 
 
-void rdraw_2d::reset()
+void rdraw_2d_t::reset()
 {
   transform_       = mat3f_t::identity;
   scale_           = vec2f_t::one;
@@ -283,39 +258,76 @@ void rdraw_2d::reset()
 
 
 
-void rdraw_2d::draw_rect(const vec2f_t &pos, const vec2f_t &size,
-                         const vec4_t<uint8_t> &color, rmaterial_t *material,
-                         const vec2f_t &uv_min, const vec2f_t &uv_max)
+void rdraw_2d_t::reset_and_clear()
+{
+  reset();
+  clear();
+}
+
+
+
+void rdraw_2d_t::draw_offset_rect(const vec2f_t &pos, const vec2f_t &size,
+  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec2f_t &uv_min, const vec2f_t &uv_max)
+{
+  draw_rect(offset_to_screen(pos), size, color, material, uv_min, uv_max);
+}
+
+
+
+void rdraw_2d_t::draw_offset_rect_raw(const vec2f_t &pos, const vec2f_t &size,
+  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec2f_t &uv_min, const vec2f_t &uv_max)
+{
+  draw_rect_raw(offset_to_screen(pos), size, color, material, uv_min, uv_max);
+}
+
+
+
+void rdraw_2d_t::draw_rect(const vec2f_t &pos, const vec2f_t &size,
+  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec2f_t &uv_min, const vec2f_t &uv_max)
 {
   draw_stage_t &stage = push_draw_stage(material, 4);
 
   const mat3f_t &tform = vertex_transform();
   const vec2f_t fpos = origin_ + pos;
 
-  auto vb_length = vpositions_.size();
+  const auto vb_length = vertices_.size();
   const uint16_t base_vertex = uint16_t(vb_length - stage.base_vertex);
   const uint16_t bv1 = base_vertex + 1;
   const uint16_t bv2 = base_vertex + 2;
   const uint16_t bv3 = base_vertex + 3;
 
-  vpositions_.reserve(vb_length + 4);
-  vtexcoords_.reserve(vb_length + 4);
-  vcolors_.reserve(vb_length + 4);
+  vertices_.reserve(vb_length + 4);
 
-  vec2f_t upleft = -handle_;
-  vec2f_t bottomright = size + upleft;
+  const vec2f_t upleft = -(handle_ * size);
+  const vec2f_t bottomright = size + upleft;
 
-  vpositions_.push_back(fpos + (tform * upleft));
-  vpositions_.push_back(fpos + (tform * vec2f_t::make(bottomright.x, upleft.y)));
-  vpositions_.push_back(fpos + (tform * bottomright));
-  vpositions_.push_back(fpos + (tform * vec2f_t::make(upleft.x, bottomright.y)));
-
-  vtexcoords_.push_back({ uv_min.x, uv_max.y });
-  vtexcoords_.push_back(uv_max);
-  vtexcoords_.push_back({ uv_max.x, uv_min.y });
-  vtexcoords_.push_back(uv_min);
-
-  vcolors_.insert(vcolors_.end(), 4, color);
+  // top-left
+  vertices_.push_back({
+    fpos + (tform * upleft),
+    { uv_min.x, uv_max.y },
+    color
+  });
+  // top right
+  vertices_.push_back({
+    fpos + (tform * vec2f_t::make(bottomright.x, upleft.y)),
+    uv_max,
+    color
+  });
+  // bottom right
+  vertices_.push_back({
+    fpos + (tform * bottomright),
+    { uv_max.x, uv_min.y },
+    color
+  });
+  // bottom left
+  vertices_.push_back({
+    fpos + (tform * vec2f_t::make(upleft.x, bottomright.y)),
+    uv_min,
+    color
+  });
 
   faces_.reserve(faces_.size() + 2);
 
@@ -327,33 +339,40 @@ void rdraw_2d::draw_rect(const vec2f_t &pos, const vec2f_t &size,
 
 
 
-void rdraw_2d::draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
-                             const vec4_t<uint8_t> &color, rmaterial_t *material,
-                             const vec2f_t &uv_min, const vec2f_t &uv_max)
+void rdraw_2d_t::draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
+  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec2f_t &uv_min, const vec2f_t &uv_max)
 {
   draw_stage_t &stage = push_draw_stage(material, 4);
 
-  const auto vb_length = vpositions_.size();
+  const auto vb_length = vertices_.size();
   const uint16_t base_vertex = uint16_t(vb_length - stage.base_vertex);
   const uint16_t bv1 = base_vertex + 1;
   const uint16_t bv2 = base_vertex + 2;
   const uint16_t bv3 = base_vertex + 3;
 
-  vpositions_.reserve(vb_length + 4);
-  vtexcoords_.reserve(vb_length + 4);
-  vcolors_.reserve(vb_length + 4);
+  vertices_.reserve(vb_length + 4);
 
-  vpositions_.push_back(pos);
-  vpositions_.push_back({ pos.x + size.x, pos.y });
-  vpositions_.push_back({ pos.x + size.x, pos.y + size.y });
-  vpositions_.push_back({ pos.x, pos.y + size.y });
-
-  vtexcoords_.push_back({ uv_min.x, uv_max.y });
-  vtexcoords_.push_back(uv_max);
-  vtexcoords_.push_back({ uv_max.x, uv_min.y });
-  vtexcoords_.push_back(uv_min);
-
-  vcolors_.insert(vcolors_.end(), 4, color);
+  vertices_.push_back({
+    pos,
+    { uv_min.x, uv_max.y },
+    color
+  });
+  vertices_.push_back({
+    { pos.x + size.x, pos.y },
+    uv_max,
+    color
+  });
+  vertices_.push_back({
+    { pos.x + size.x, pos.y + size.y },
+    { uv_max.x, uv_min.y },
+    color
+  });
+  vertices_.push_back({
+    { pos.x, pos.y + size.y },
+    uv_min,
+    color
+  });
 
   faces_.reserve(faces_.size() + 2);
 
@@ -365,15 +384,15 @@ void rdraw_2d::draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
 
 
 
-void rdraw_2d::set_rotation(float r)
+void rdraw_2d_t::set_rotation(const float angle_deg)
 {
-  rotation_ = r;
+  rotation_ = angle_deg;
   transform_dirty_ = true;
 }
 
 
 
-void rdraw_2d::set_scale(const vec2f_t &scale)
+void rdraw_2d_t::set_scale(const vec2f_t &scale)
 {
   scale_ = scale;
   transform_dirty_ = true;
@@ -381,28 +400,43 @@ void rdraw_2d::set_scale(const vec2f_t &scale)
 
 
 
-void rdraw_2d::set_origin(const vec2f_t &origin)
+void rdraw_2d_t::set_origin(const vec2f_t &origin)
 {
   origin_ = origin;
 }
 
 
 
-void rdraw_2d::set_handle(const vec2f_t &handle)
+void rdraw_2d_t::set_handle(const vec2f_t &handle)
 {
   handle_ = handle;
 }
 
 
 
-void rdraw_2d::set_screen_size(const vec2_t<uint16_t> &size)
+void rdraw_2d_t::set_screen_size(const vec2f_t &size)
 {
   screen_size_ = size;
 }
 
 
 
-auto rdraw_2d::push_draw_stage(rmaterial_t *material, GLint vertices_needed) -> draw_stage_t &
+vec2f_t rdraw_2d_t::screen_to_offset(const vec2f_t &v) const
+{
+  return v * screen_size_.inverse();
+}
+
+
+
+vec2f_t rdraw_2d_t::offset_to_screen(const vec2f_t &v) const
+{
+  return v * screen_size_;
+}
+
+
+
+auto rdraw_2d_t::push_draw_stage(rmaterial_t *const material,
+  const GLint vertices_needed) -> draw_stage_t &
 {
   if (material == NULL) {
     throw std::invalid_argument("Material cannot be NULL");
@@ -425,7 +459,7 @@ auto rdraw_2d::push_draw_stage(rmaterial_t *material, GLint vertices_needed) -> 
 
 
 
-const mat3f_t &rdraw_2d::vertex_transform()
+const mat3f_t &rdraw_2d_t::vertex_transform()
 {
   if (transform_dirty_) {
     transform_ = mat3f_t::scaling({scale_.x, scale_.y, 1})
@@ -438,13 +472,13 @@ const mat3f_t &rdraw_2d::vertex_transform()
 
 
 /*******************************************************************************
-*                            rdraw_2d::draw_stage_t                            *
+*                            rdraw_2d_t::draw_stage_t                            *
 *******************************************************************************/
 
-rdraw_2d::draw_stage_t::draw_stage_t(const rdraw_2d &draw, rmaterial_t *mat)
+rdraw_2d_t::draw_stage_t::draw_stage_t(const rdraw_2d_t &draw, rmaterial_t *mat)
 : material(mat),
   base_index(draw.faces_.size() * 3),
-  base_vertex(draw.vpositions_.size()),
+  base_vertex(draw.vertices_.size()),
   screen_size(draw.screen_size_),
   num_vertices(0),
   num_indices(0)

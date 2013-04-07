@@ -1,4 +1,5 @@
 #include "database.hh"
+#include "physicsfs_vfs.hh"
 
 
 namespace snow {
@@ -8,14 +9,16 @@ namespace snow {
   if (!is_open()) throw std::runtime_error((LIT));
 
 
+
 database_t::database_t(const string &path, bool throw_on_error, int flags, const string &vfs) :
   db_(NULL),
   error_msg_(),
   error_(SQLITE_OK),
   throw_on_error_(throw_on_error)
 {
-  const char *zvfs = (vfs.empty() ? NULL : vfs.c_str());
-  check_error(sqlite3_open_v2(path.c_str(), &db_, flags, zvfs));
+  const char *zvfs = vfs.size() == 0 ? NULL : vfs.c_str();
+  int result = sqlite3_open_v2(path.c_str(), &db_, flags, zvfs);
+  check_error_nothrow(result);
 }
 
 
@@ -35,6 +38,34 @@ database_t::database_t(database_t &&other) :
 {
   other.db_ = NULL;
   other.error_ = SQLITE_OK;
+}
+
+
+
+database_t database_t::read_physfs(const string &path, bool throw_on_error)
+{
+  return database_t(path, throw_on_error, SQLITE_OPEN_READONLY, "physfs");
+}
+
+
+
+database_t database_t::append_physfs(const string &path, bool throw_on_error)
+{
+  return database_t(path, throw_on_error, SQLITE_OPEN_READWRITE, "physfs");
+}
+
+
+
+database_t database_t::create_physfs(const string &path, bool throw_on_error)
+{
+  return database_t(path, throw_on_error, SQLITE_OPEN_CREATE, "physfs");
+}
+
+
+
+database_t database_t::temp_db()
+{
+  return database_t(":memory:");
 }
 
 
@@ -125,6 +156,7 @@ int database_t::check_error(int code)
     error_msg_ = (db_ != NULL
                   ? sqlite3_errmsg(db_)
                   : sqlite3_errstr(code));
+    s_log_error("SQLite3 Error: %s", error_msg_.c_str());
     if (throw_on_error_) {
       throw std::runtime_error(error_msg_);
     }
@@ -143,6 +175,7 @@ int database_t::check_error_nothrow(int code)
     error_msg_ = (db_ != NULL
                   ? sqlite3_errmsg(db_)
                   : sqlite3_errstr(code));
+    s_log_error("SQLite3 Error: %s", error_msg_.c_str());
   } else {
     error_msg_.clear();
   }

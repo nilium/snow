@@ -429,7 +429,7 @@ void lua_bind_vec3(lua_State *L)
 
 void lua_pushvec3(lua_State *L, const vec3f_t &m)
 {
-  const vec3_pool_t::index_t pool_index = g_vec3_pool.reserve_with(m);
+  const vec3_pool_t::index_t pool_index = g_vec3_pool.reserve(m);
   vec3_pool_t::index_t *obj_box;
   obj_box = (vec3_pool_t::index_t *)lua_newuserdata(L, sizeof(pool_index));
   *obj_box = pool_index;

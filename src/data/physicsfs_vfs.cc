@@ -289,6 +289,7 @@ int xOpen(sqlite3_vfs *vfs, const char *zName, sqlite3_file *fileout, int flags,
     *pOutFlags = SQLITE_OPEN_READONLY;
   } else {
     pf->no_file = false;
+    pf->file = NULL;
 
     if (flags & SQLITE_OPEN_READONLY) {
       pf->file = PHYSFS_openRead(zName);
@@ -297,7 +298,8 @@ int xOpen(sqlite3_vfs *vfs, const char *zName, sqlite3_file *fileout, int flags,
       pf->file = PHYSFS_openWrite(zName);
       *pOutFlags = SQLITE_OPEN_CREATE;
     } else if (flags & SQLITE_OPEN_READWRITE) {
-      pf->file = NULL;
+      pf->file = PHYSFS_openAppend(zName);
+      *pOutFlags = SQLITE_OPEN_READWRITE;
     }
   }
 
@@ -327,7 +329,7 @@ int xAccess(sqlite3_vfs *vfs, const char *zName, int flags, int *pResOut)
       return SQLITE_OK;
     }
   } else if (flags == SQLITE_ACCESS_READWRITE) {
-    *pResOut = 0;
+    *pResOut = 1;
     return SQLITE_OK;
   } else {
     return SQLITE_IOERR_ACCESS;
@@ -460,9 +462,9 @@ int xGetLastError(sqlite3_vfs *vfs, int nBytes, char *out)
 
 
 
-int register_physfs_vfs()
+int register_physfs_vfs(int make_default)
 {
-  return sqlite3_vfs_register(&p_vfs, 1);
+  return sqlite3_vfs_register(&p_vfs, make_default);
 }
 
 

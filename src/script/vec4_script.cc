@@ -425,7 +425,7 @@ void lua_bind_vec4(lua_State *L)
 
 void lua_pushvec4(lua_State *L, const vec4f_t &m)
 {
-  const vec4_pool_t::index_t pool_index = g_vec4_pool.reserve_with(m);
+  const vec4_pool_t::index_t pool_index = g_vec4_pool.reserve(m);
   vec4_pool_t::index_t *obj_box;
   obj_box = (vec4_pool_t::index_t *)lua_newuserdata(L, sizeof(pool_index));
   *obj_box = pool_index;

@@ -100,6 +100,9 @@ public:
   // set of GL_EXTENSIONS results
   auto      extensions() const          -> const std::set<string> &;
 
+  // GL_STENCIL_BITS
+  // auto      stencil_bits() const        -> GLint;
+
 
 /*******************************************************************************
 *                              Extension checking                              *

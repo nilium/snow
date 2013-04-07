@@ -7,7 +7,7 @@
 namespace snow {
 
 
-int register_physfs_vfs();
+int register_physfs_vfs(int make_default = 0);
 int unregister_physfs_vfs();
 
 
