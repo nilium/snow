@@ -49,7 +49,12 @@ void sn_assert_gl__(const char *msg, size_t line, const char *file, const char *
   GLenum error = glGetError();
   if (error != GL_NO_ERROR) {
     std::string error_str = sn_gl_error_string__(msg, line, file, func);
+    #if USE_EXCEPTIONS
     throw gl_error_t(error_str, error);
+    #else
+    std::clog << what_with_error(error_str, error) << std::endl;
+    exit(1);
+    #endif
   }
 }
 

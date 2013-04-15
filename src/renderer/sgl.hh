@@ -1,7 +1,7 @@
 #ifndef __SNOW__SGL_HH__
 #define __SNOW__SGL_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 
 #if S_PLATFORM_MAC
 #include <OpenGL/gl3.h>

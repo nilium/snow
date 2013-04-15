@@ -1,7 +1,7 @@
 #ifndef __SNOW__DATABASE_LOCAL_HH__
 #define __SNOW__DATABASE_LOCAL_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <sqlite3.h>
 
 

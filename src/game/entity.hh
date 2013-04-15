@@ -1,7 +1,7 @@
 #ifndef __SNOW__ENTITY_HH__
 #define __SNOW__ENTITY_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/types/object_pool.hh>
 #include "transform.hh"
 #include <vector>
@@ -45,7 +45,6 @@ struct S_EXPORT entity_t : public transform_t
 
 private:
   friend pool_t;                          // to allow obj pool construction
-  friend pool_t::objects_t;               // same reason as pool_t
   friend class std::allocator<entity_t>;  // same reason as pool_t
   friend entity_manager_t;    // to set index_
 

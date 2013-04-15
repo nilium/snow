@@ -3,7 +3,7 @@
 
 
 #define throw_if_finalized(LIT) \
-  if (is_finalized()) throw std::runtime_error((LIT));
+  if (is_finalized()) s_throw(std::runtime_error, LIT);
 
 
 namespace snow {
@@ -438,7 +438,7 @@ int dbstatement_t::binding_index(const string &name)
     const char *const zstr = name.c_str();
     index = sqlite3_bind_parameter_index(stmt_, zstr);
     if (index == 0) {
-      throw std::invalid_argument("Parameter name does not exist in prepared statement");
+      s_throw(std::invalid_argument, "Parameter name does not exist in prepared statement");
     }
     bind_vars_.insert({name, index});
   } else {

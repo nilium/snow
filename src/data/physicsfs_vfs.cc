@@ -1,5 +1,5 @@
 #include "physicsfs_vfs.hh"
-#include <snow/config.hh>
+#include "../config.hh"
 #include <physfs.h>
 #ifdef USE_DEV_RANDOM
 #include <cstdio>

@@ -39,7 +39,7 @@ bool dbiterator_t::valid() const
 dbresult_t &dbiterator_t::operator * ()
 {
   if (!valid()) {
-    throw std::runtime_error("Attempt to dereference invalid iterator.");
+    s_throw(std::runtime_error, "Attempt to dereference invalid iterator.");
   }
   return result_;
 }
@@ -71,11 +71,11 @@ bool dbiterator_t::operator != (const dbiterator_t &other) const
 auto dbiterator_t::operator ++ () -> dbiterator_t &
 {
   if (!valid()) {
-    throw std::runtime_error("Attempt to increment invalid iterator.");
+    s_throw(std::runtime_error, "Attempt to increment invalid iterator.");
   } else if (code_ == SQLITE_ROW) {
     code_ = stmt_.step();
   } else {
-    throw std::runtime_error("Attempt to increment iterator at end of execution");
+    s_throw(std::runtime_error, "Attempt to increment iterator at end of execution");
   }
   return *this;
 }

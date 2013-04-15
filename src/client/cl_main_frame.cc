@@ -1,9 +1,18 @@
 #include "cl_main.hh"
 #include "../game/system.hh"
+#include "../game/console_pane.hh"
 #include "../renderer/gl_error.hh"
 #include "../renderer/font.hh"
+#include "../renderer/draw_2d.hh"
+#include "../renderer/material_basic.hh"
+#include "../renderer/texture.hh"
+#include "../renderer/buffer.hh"
+#include "../renderer/program.hh"
+#include "../renderer/shader.hh"
+#include "../renderer/vertex_array.hh"
 #include "../data/database.hh"
 #include "../timing.hh"
+#include <thread>
 #include <physfs.h>
 
 
@@ -11,6 +20,11 @@ namespace snow {
 
 
 namespace {
+
+
+cvar_t cl_willQuit ( "cl_willQuit",  0, CVAR_READ_ONLY | CVAR_DELAYED );
+cvar_t wnd_focused ( "wnd_focused",  1, CVAR_READ_ONLY | CVAR_DELAYED );
+cvar_t r_drawFrame ( "r_drawFrame",  1, CVAR_READ_ONLY | CVAR_DELAYED );
 
 
 enum : int {
@@ -39,6 +53,7 @@ struct esc_system_t : system_t
   {
     if (will_quit_) {
       s_log_note("Should quit");
+      cl_willQuit.seti(1);
     }
   }
 
@@ -47,7 +62,64 @@ private:
 };
 
 
+
+const std::chrono::milliseconds &cl_frameloop_sleep_duration();
 void cl_poll_events(void *ctx);
+
+
+
+const std::chrono::milliseconds &cl_frameloop_sleep_duration()
+{
+  static std::chrono::milliseconds sleep_duration(10);
+  return sleep_duration;
+}
+
+
+
+rshader_t load_shader(gl_state_t &gl, GLenum kind, const string &path)
+{
+  auto file = PHYSFS_openRead(path.c_str());
+  if (!file) {
+    s_throw(std::runtime_error, "Cannot open file %s", path.c_str());
+  }
+
+  auto size = PHYSFS_fileLength(file);
+  std::vector<char> filebuf(size);
+  PHYSFS_readBytes(file, filebuf.data(), size);
+  PHYSFS_close(file);
+
+  rshader_t shader(gl, kind);
+  shader.load_source(string(filebuf.data(), filebuf.size()));
+
+  if (!shader.compile()) {
+    s_throw(std::runtime_error, "Couldn't compile shader: %s", shader.error_string().c_str());
+  }
+
+  return shader;
+}
+
+
+
+bool build_program(rprogram_t &program, const rshader_t &vertex, const rshader_t &frag)
+{
+  program.bind_uniform(0, "modelview");
+  program.bind_uniform(1, "projection");
+  program.bind_uniform(2, "diffuse");
+  program.bind_attrib(0, "position");
+  program.bind_attrib(1, "texcoord");
+  program.bind_attrib(2, "color");
+  program.bind_frag_out(0, "frag_color");
+
+  program.attach_shader(vertex);
+  program.attach_shader(frag);
+
+  if (!program.link()) {
+    s_throw(std::runtime_error, "Couldn't link program: %s", program.error_string().c_str());
+    return false;
+  }
+
+  return true;
+}
 
 
 
@@ -123,16 +195,19 @@ void client_t::read_events(double timeslice)
   double input_time = glfwGetTime();
   // Read network events
   if (is_connected()) {
-    dispatch_group_async(input_group_, frame_queue_, [this, timeslice] {
+    dispatch_group_async_s(input_group_, frame_queue_, [this, timeslice] {
       pump_netevents(timeslice);
     });
+
+    // Read user input
+    dispatch_group_async_f(input_group_, cl_main_queue(), NULL, cl_poll_events);
+    // Allow the group to take up to 4 milliseconds to poll for events before
+    // it just goes ahead
+    dispatch_group_wait(input_group_, DISPATCH_TIME_FOREVER);
+  } else {
+    dispatch_sync_f(cl_main_queue(), NULL, cl_poll_events);
   }
 
-  // Read user input
-  dispatch_group_async_f(input_group_, cl_main_queue(), NULL, cl_poll_events);
-  // Allow the group to take up to 4 milliseconds to poll for events before
-  // it just goes ahead
-  dispatch_group_wait(input_group_, DISPATCH_TIME_FOREVER);
   input_time = glfwGetTime() - input_time;
   if (input_time > LONG_INPUT_TIME) {
     s_log_warning("Input queue is taking a long time: %f", input_time);
@@ -143,6 +218,12 @@ void client_t::read_events(double timeslice)
   auto sys_end = systems_.cend();
   auto sys_begin = systems_.cbegin();
   while (event_queue_.poll_event_before(event, base_time_ + timeslice)) {
+
+    if (event.kind == WINDOW_FOCUS_EVENT) {
+      wnd_focused.seti(event.focused);
+      continue;
+    }
+
     auto sys_iter = sys_begin;
     event.time -= base_time_;
     while (sys_iter != sys_end) {
@@ -188,20 +269,12 @@ void client_t::run_frameloop()
   esc_system_t debug_sys;
   add_system(&debug_sys);
 
-  database_t db = database_t::read_physfs("/fonts.db");
-  rfont_t font(db, "HelveticaNeue");
-  db.close();
-
-  try {
-    frameloop();
-  } catch (std::exception &ex) {
-    s_log_error("Uncaught exception in frameloop: %s", ex.what());
-  }
+  frameloop();
 
   remove_system(&debug_sys);
 
   // Go back to the main thread and kill the program cleanly.
-  dispatch_async(cl_main_queue(), [this] { terminate(); });
+  dispatch_async_s(cl_main_queue(), [this] { terminate(); });
 }
 
 
@@ -214,6 +287,13 @@ void client_t::run_frameloop()
 ==============================================================================*/
 void client_t::frameloop()
 {
+  cvars_.clear();
+  cvars_.register_cvar(&cl_willQuit);
+  cvars_.register_cvar(&r_drawFrame);
+
+  console_pane_t &console = default_console();
+  console.set_cvar_set(&cvars_);
+
   auto window = window_;
   gl_state_t &gl = state_;
 
@@ -231,6 +311,33 @@ void client_t::frameloop()
   unsigned frame, last_frame;
   frame = 1; last_frame = 0;
 
+  rdraw_2d_t drawer(gl);
+  rbuffer_t indices(gl, GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 2048);
+  rbuffer_t vertices(gl, GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 4096);
+  rvertex_array_t vao = drawer.build_vertex_array(0, 1, 2, vertices, 0, true);
+  rprogram_t prog(gl);
+  build_program(prog,
+    load_shader(gl, GL_VERTEX_SHADER, "basic.vsh"),
+    load_shader(gl, GL_FRAGMENT_SHADER, "basic.fsh"));
+
+  database_t fontdb = database_t::read_physfs("console_font.db");
+  rfont_t font(fontdb, "PragmataPro");
+  fontdb.close();
+  rtexture_t tex = load_texture_2d(gl, "console_font.png", true, TEX_COMP_RGBA);
+  rmaterial_basic_t mat(gl);
+  mat.set_program(&prog, 0, 1, 2);
+  mat.set_texture(&tex);
+  font.set_font_page(0, &mat);
+  console.set_font(&font);
+  console.set_drawer(&drawer);
+  console.set_background(&mat);
+
+  add_system(&console);
+
+  glClearColor(0.5, 0.5, 0.5, 1.0);
+  glEnable(GL_BLEND);
+  gl.set_blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
   while (running_.load()) {
 
     // Do any frames that would have passed since the last rendering point
@@ -240,16 +347,35 @@ void client_t::frameloop()
       ++frame;
       read_events(sim_time_);
       do_frame(FRAME_SEQ_TIME, sim_time_);
+      cvars_.update_cvars();
     }
 
-    if (frame != last_frame) {
+
+    if (frame != last_frame && r_drawFrame.geti()) {
       last_frame = frame;
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
       assert_gl("Clearing buffers");
 
-      // render scene
+      for (auto &spair : systems_) {
+        if (spair.second->active()) {
+          spair.second->draw(sim_time_);
+        }
+      }
+
+      font.draw_text(drawer, { 200, 200 }, "foobar");
+      drawer.buffer_vertices(vertices, 0);
+      drawer.buffer_indices(indices, 0);
+      drawer.draw_with_vertex_array(vao, indices, 0);
 
       glfwSwapBuffers(window);
+
+      drawer.clear();
+    }
+
+    if (cl_willQuit.geti()) {
+      running_ = false;
+    } else if (!wnd_focused.geti()) {
+      std::this_thread::sleep_for(cl_frameloop_sleep_duration());
     }
   } // while (running)
 

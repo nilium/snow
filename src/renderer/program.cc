@@ -82,7 +82,7 @@ rprogram_t &rprogram_t::operator = (rprogram_t &&program)
 {
   if (this != &program) {
     if (&state_ != &program.state_)
-      throw std::invalid_argument("Unable to move program: "
+      s_throw(std::invalid_argument, "Unable to move program: "
                                   "GL state objects differ");
 
     unload();
@@ -109,7 +109,7 @@ rprogram_t &rprogram_t::operator = (rprogram_t &&program)
 void rprogram_t::use()
 {
   if (!usable())
-    throw std::runtime_error("Shader program is not in a usable state");
+    s_throw(std::runtime_error, "Shader program is not in a usable state");
 
   state_.use_program(program_);
 }
@@ -124,12 +124,12 @@ void rprogram_t::use()
 void rprogram_t::bind_uniform(int key, const string &name)
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to bind uniform location: "
+    s_throw(std::runtime_error, "Unable to bind uniform location: "
                              "program is invalid");
   }
 
   if (uniforms_.find(key) != uniforms_.end()) {
-    throw std::invalid_argument("Uniform key already bound to program");
+    s_throw(std::invalid_argument, "Uniform key already bound to program");
   }
 
   auto ins_result = names_.insert(name);
@@ -152,7 +152,7 @@ void rprogram_t::bind_uniform(int key, const string &name)
 GLint rprogram_t::uniform_location(int key) const
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to get uniform location (int): "
+    s_throw(std::runtime_error, "Unable to get uniform location (int): "
                              "program is invalid");
   } else if (!linked()) {
     return -1;
@@ -176,7 +176,7 @@ GLint rprogram_t::uniform_location(int key) const
 GLint rprogram_t::uniform_location(const string &name) const
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to get uniform location (string): "
+    s_throw(std::runtime_error, "Unable to get uniform location (string): "
                              "program is invalid");
   } else if (!linked()) {
     return -1;
@@ -197,19 +197,12 @@ GLint rprogram_t::uniform_location(const string &name) const
 void rprogram_t::bind_frag_out(GLuint colorNumber, const string &name)
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to bind fragment output (no index): "
+    s_throw(std::runtime_error, "Unable to bind fragment output (no index): "
                              "program is invalid");
   }
 
-  try {
-    glBindFragDataLocation(program_, colorNumber, name.c_str());
-    assert_gl("Binding fragment data location (no index)");
-  } catch (gl_error_t &error) {
-    std::clog << "An error occurred while binding fragment data locaton <"
-              << name << "> (color number: " << colorNumber << ")" << std::endl
-              << "What: " << error.what() << std::endl;
-    throw;
-  }
+  glBindFragDataLocation(program_, colorNumber, name.c_str());
+  assert_gl("Binding fragment data location (no index)");
 }
 
 
@@ -223,20 +216,12 @@ void rprogram_t::bind_frag_out(GLuint colorNumber, const string &name)
 void rprogram_t::bind_frag_out(GLuint colorNumber, GLuint index, const string &name)
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to bind fragment output (indexed): "
+    s_throw(std::runtime_error, "Unable to bind fragment output (indexed): "
                              "program is invalid");
   }
 
-  try {
-    glBindFragDataLocationIndexed(program_, colorNumber, index, name.c_str());
-    assert_gl("Binding fragment data location (indexed)");
-  } catch (gl_error_t &error) {
-    std::clog << "An error occurred while binding fragment data locaton <"
-              << name << "> (color number: " << colorNumber
-              << " index:" << index << ")" << std::endl
-              << "What: " << error.what() << std::endl;
-    throw;
-  }
+  glBindFragDataLocationIndexed(program_, colorNumber, index, name.c_str());
+  assert_gl("Binding fragment data location (indexed)");
 }
 #endif
 
@@ -250,18 +235,11 @@ void rprogram_t::bind_frag_out(GLuint colorNumber, GLuint index, const string &n
 void rprogram_t::bind_attrib(GLuint location, const string &name)
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to bind attribute: program is invalid");
+    s_throw(std::runtime_error, "Unable to bind attribute: program is invalid");
   }
 
-  try {
-    glBindAttribLocation(program_, location, name.c_str());
-    assert_gl("Binding attribute");
-  } catch (gl_error_t &error) {
-    std::clog << "An error occurred while binding attribute <" << name
-              << "> to location " << location << std::endl
-              << "What: " << error.what() << std::endl;
-    throw;
-  }
+  glBindAttribLocation(program_, location, name.c_str());
+  assert_gl("Binding attribute");
 }
 
 
@@ -274,9 +252,9 @@ void rprogram_t::bind_attrib(GLuint location, const string &name)
 void rprogram_t::attach_shader(const rshader_t &shader)
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to attach shader: program is invalid");
+    s_throw(std::runtime_error, "Unable to attach shader: program is invalid");
   } else if (!shader.valid()) {
-    throw std::invalid_argument("Unable to attach shader: shader is invalid");
+    s_throw(std::invalid_argument, "Unable to attach shader: shader is invalid");
   }
 
   glAttachShader(program_, shader.shader_);
@@ -293,9 +271,9 @@ void rprogram_t::attach_shader(const rshader_t &shader)
 void rprogram_t::detach_shader(const rshader_t &shader)
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to attach shader: program is invalid");
+    s_throw(std::runtime_error, "Unable to attach shader: program is invalid");
   } else if (!shader.valid()) {
-    throw std::invalid_argument("Unable to attach shader: shader is invalid");
+    s_throw(std::invalid_argument, "Unable to attach shader: shader is invalid");
   }
 
   glDetachShader(program_, shader.shader_);
@@ -312,7 +290,7 @@ void rprogram_t::detach_shader(const rshader_t &shader)
 bool rprogram_t::link()
 {
   if (!valid()) {
-    throw std::runtime_error("Unable to link: program is invalid");
+    s_throw(std::runtime_error, "Unable to link: program is invalid");
   }
 
   glLinkProgram(program_);
@@ -344,7 +322,7 @@ bool rprogram_t::link()
 bool rprogram_t::validate()
 {
   if (!linked()) {
-    throw std::runtime_error("Unable to get uniform location: "
+    s_throw(std::runtime_error, "Unable to get uniform location: "
                              "program is not linked");
   }
 
@@ -419,14 +397,8 @@ void rprogram_t::load_uniforms()
 void rprogram_t::load_uniform(uniform_loc_t &loc)
 {
   const GLchar *name_cstr = (const GLchar *)loc.second->c_str();
-  try {
-    loc.first = glGetUniformLocation(program_, name_cstr);
-    assert_gl("Getting uniform location");
-  } catch (gl_error_t &error) {
-    std::clog << "Failed to get uniform location: "
-      << error.what() << std::endl;
-    loc.first = -1;
-  }
+  loc.first = glGetUniformLocation(program_, name_cstr);
+  assert_gl("Getting uniform location");
 }
 
 

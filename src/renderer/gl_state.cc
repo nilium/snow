@@ -16,26 +16,21 @@ namespace {
 gl_state_t::version_t extract_version_pair(const string &version_str)
 {
   gl_state_t::version_t result = {-1, -1};
-  try {
-    const auto first_dot = version_str.find('.');
-    auto second_dot = version_str.find('.', first_dot + 1);
-    if (second_dot == string::npos)
-      second_dot = version_str.find(' ', first_dot + 1);
+  const auto first_dot = version_str.find('.');
+  auto second_dot = version_str.find('.', first_dot + 1);
+  if (second_dot == string::npos)
+    second_dot = version_str.find(' ', first_dot + 1);
 
-    if (first_dot == string::npos || first_dot == 0)
-      return result;
+  if (first_dot == string::npos || first_dot == 0)
+    return result;
 
-    result.first = (GLint)std::stoi(version_str.substr(0, first_dot));
+  string first_substr = version_str.substr(0, first_dot);
+  string second_substr = second_dot == string::npos
+    ? version_str.substr(first_dot + 1)
+    : version_str.substr(first_dot + 1, second_dot - first_dot);
 
-    if (second_dot == string::npos)
-      result.second = (GLint)std::stoi(version_str.substr(first_dot + 1));
-    else
-      result.second = (GLint)std::stoi(version_str.substr(first_dot + 1, second_dot - first_dot));
-  }
-  catch (std::exception &e) {
-    result.first = -1;
-    result.second = -1;
-  }
+  result.first = (GLint)std::atoi(first_substr.c_str());
+  result.second = (GLint)std::atoi(second_substr.c_str());
 
   return result;
 }
@@ -56,22 +51,12 @@ gl_state_t::version_t extract_version_pair(const string &version_str)
 ==============================================================================*/
 void gl_state_t::acquire()
 {
-  #define SGL_ACQUIRE_ERROR(FUNC, LIT_MSG)      \
-    try {                                       \
-      FUNC;                                     \
-    } catch (gl_error_t &error) {               \
-      std::clog << LIT_MSG << std::endl;        \
-      throw;                                    \
-    }
-
-  SGL_ACQUIRE_ERROR(acquire_system_info(),   "Acquiring system information");
-  SGL_ACQUIRE_ERROR(acquire_shader_state(),  "Acquiring shader state");
-  SGL_ACQUIRE_ERROR(acquire_attrib_state(),  "Resetting vertex attrib state");
-  SGL_ACQUIRE_ERROR(acquire_texture_state(), "Acquiring texture state");
-  SGL_ACQUIRE_ERROR(acquire_buffer_state(),  "Acquiring buffer state");
-  SGL_ACQUIRE_ERROR(acquire_blend_state(),   "Acquiring blending state");
-
-  #undef SGL_ACQUIRE_ERROR
+  acquire_system_info();
+  acquire_shader_state();
+  acquire_attrib_state();
+  acquire_texture_state();
+  acquire_buffer_state();
+  acquire_blend_state();
 }
 
 
@@ -214,7 +199,7 @@ const std::set<string> &gl_state_t::extensions() const
 bool gl_state_t::has_extension(const sgl_extension_t extension) const
 {
   if (SGL_EXTENSION_COUNT <= extension)
-    throw std::invalid_argument("Invalid extension name");
+    s_throw(std::invalid_argument, "Invalid extension name");
 
   return has_extension_[extension];
 }
@@ -276,7 +261,8 @@ bool gl_state_t::is_attrib_array_enabled(const GLuint index) const
     assert_gl("Checking if vertex attrib array is enabled");
     return enabled != GL_FALSE;
   } else {
-    throw std::out_of_range("Invalid attribute index - out of range");
+    s_throw(std::out_of_range, "Invalid attribute index - out of range");
+    return false;
   }
 }
 
@@ -290,7 +276,7 @@ bool gl_state_t::is_attrib_array_enabled(const GLuint index) const
 void gl_state_t::set_attrib_array_enabled(const GLuint index, const bool enabled)
 {
   if (max_vertex_attribs_ <= index)
-    throw std::out_of_range("Invalid attribute index - out of range");
+    s_throw(std::out_of_range, "Invalid attribute index - out of range");
 
   if (enabled) {
     glEnableVertexAttribArray(index);
@@ -416,7 +402,7 @@ GLuint gl_state_t::texture_binding(const unsigned target) const
 {
   const unsigned sgl_target = sgl_texture_target_to_gl(target);
   if (SGL_TEXTURE_TARGET_COUNT <= sgl_target)
-    throw std::invalid_argument("Invalid texture target");
+    s_throw(std::invalid_argument, "Invalid texture target");
   return texture_bindings_[active_texture_ - GL_TEXTURE0].binding[sgl_target];
 }
 
@@ -431,7 +417,7 @@ void gl_state_t::bind_texture(const unsigned target, const GLuint texture)
 {
   const unsigned sgl_target = sgl_texture_target_to_gl(target);
   if (SGL_TEXTURE_TARGET_COUNT <= sgl_target)
-    throw std::invalid_argument("Invalid texture target");
+    s_throw(std::invalid_argument, "Invalid texture target");
 
   // const GLuint last = texture_bindings_[active_texture_ - GL_TEXTURE0].binding[sgl_target];
   // if (last != texture) {
@@ -468,7 +454,7 @@ bool gl_state_t::can_create_texture(const GLint level, const GLint internalForma
   assert_gl("Checking for texture support using 2D proxy texture");
   glGetTexLevelParameteriv(GL_PROXY_TEXTURE_2D, level, GL_TEXTURE_INTERNAL_FORMAT, &out_iformat);
   assert_gl("Getting GL_TEXTURE_INTERNAL_FORMAT for 2D proxy texture");
-  return (out_iformat == GL_RGBA);
+  return (out_iformat != 0);
 }
 
 
@@ -544,7 +530,9 @@ GLuint &gl_state_t::binding_for_target(GLenum target)
   switch (target) {
   case GL_READ_FRAMEBUFFER: return fb_read_;
   case GL_DRAW_FRAMEBUFFER: return fb_draw_;
-  default: throw std::invalid_argument("Invalid framebuffer target");
+  default:
+    s_throw(std::invalid_argument, "Invalid framebuffer target");
+    return fb_draw_;
   }
 }
 
@@ -619,7 +607,7 @@ void gl_state_t::bind_buffer(const unsigned target, const GLuint buffer)
 {
   const unsigned sgl_target = sgl_buffer_target_from_gl(target);
   if (SGL_BUFFER_TARGET_COUNT <= sgl_target)
-    throw std::invalid_argument("Invalid buffer target");
+    s_throw(std::invalid_argument, "Invalid buffer target");
 
   glBindBuffer(target, buffer);
   assert_gl("Binding buffer");
@@ -635,7 +623,7 @@ void gl_state_t::bind_buffer(const unsigned target, const GLuint buffer)
 GLuint gl_state_t::renderbuffer(const GLenum target) const
 {
   if (target != GL_RENDERBUFFER)
-    throw std::invalid_argument("Invalid renderbuffer target");
+    s_throw(std::invalid_argument, "Invalid renderbuffer target");
   return renderbuffer_;
 }
 
@@ -649,7 +637,7 @@ GLuint gl_state_t::renderbuffer(const GLenum target) const
 void gl_state_t::bind_renderbuffer(const GLenum target, const GLuint buffer)
 {
   if (target != GL_RENDERBUFFER)
-    throw std::invalid_argument("Invalid renderbuffer target");
+    s_throw(std::invalid_argument, "Invalid renderbuffer target");
   if (renderbuffer_ != buffer) {
     glBindRenderbuffer(target, buffer);
     assert_gl("Binding renderbuffer object");
@@ -669,7 +657,9 @@ GLuint gl_state_t::framebuffer(const GLenum target) const
   switch (target) {
   case GL_READ_FRAMEBUFFER: return fb_read_;
   case GL_DRAW_FRAMEBUFFER: return fb_draw_;
-  default: throw std::invalid_argument("Invalid framebuffer target");
+  default:
+    s_throw(std::invalid_argument, "Invalid framebuffer target");
+    return fb_draw_;
   }
 }
 

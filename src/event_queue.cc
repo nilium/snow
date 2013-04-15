@@ -194,8 +194,9 @@ void ecb_window_iconify_event(GLFWwindow *window, int iconified)
 const string &event_kind_string(event_kind_t kind)
 {
   event_name_map_t::const_iterator iter = g_event_names.find(kind);
-  if (iter == g_event_names.cend())
-    throw std::out_of_range("Invalid event kind");
+  if (iter == g_event_names.cend()) {
+    s_throw(std::out_of_range, "Invalid event kind");
+  }
   return iter->second;
 }
 
@@ -205,51 +206,30 @@ const string &event_kind_string(event_kind_t kind)
 *                         event_queue_t implementation                         *
 *******************************************************************************/
 
-event_queue_t::event_queue_t() :
-  queue_(dispatch_queue_create("net.spifftastic.snow.event_queue", DISPATCH_QUEUE_CONCURRENT))
-{
-}
 
 
-
-event_queue_t::~event_queue_t()
-{
-  dispatch_release(queue_);
-}
-
-
-
-bool event_queue_t::wait_event(event_t &out, dispatch_time_t timeout)
-{
-  bool set = false;
-  auto assign_out = [&]() {
-      if ((set = !events_.empty())) {
-        out = events_.front();
-        events_.pop_front();
-      }
-    };
-
-  if (timeout != DISPATCH_TIME_FOREVER) {
-    while (!set && dispatch_time(DISPATCH_TIME_NOW, 0) < timeout)
-      dispatch_barrier_sync(queue_, assign_out);
-  } else {
-    while (!set)
-      dispatch_barrier_sync(queue_, assign_out);
-  }
-  return set;
-}
+// bool event_queue_t::wait_event(event_t &out, dispatch_time_t timeout)
+// {
+//   if (timeout != DISPATCH_TIME_FOREVER) {
+//     while ()
+//       dispatch_barrier_sync_s(queue_, assign_out);
+//   } else {
+//     while (!set)
+//       dispatch_barrier_sync_s(queue_, assign_out);
+//   }
+//   return set;
+// }
 
 
 
 bool event_queue_t::peek_event(event_t &out) const
 {
   bool set = false;
-  dispatch_sync(queue_, [&]() {
-    if (!events_.empty()) {
-      out = events_.front();
-      set = true;
-    }
-  });
+  std::lock_guard<std::mutex> lock(lock_);
+  if (!events_.empty()) {
+    out = events_.front();
+    set = true;
+  }
   return set;
 }
 
@@ -258,13 +238,12 @@ bool event_queue_t::peek_event(event_t &out) const
 bool event_queue_t::poll_event(event_t &out)
 {
   bool set = false;
-  dispatch_barrier_sync(queue_, [&]() {
-    if (!events_.empty()) {
-      out = events_.front();
-      events_.pop_front();
-      set = true;
-    }
-  });
+  std::lock_guard<std::mutex> lock(lock_);
+  if (!events_.empty()) {
+    out = events_.front();
+    events_.pop_front();
+    set = true;
+  }
   return set;
 }
 
@@ -273,30 +252,29 @@ bool event_queue_t::poll_event(event_t &out)
 bool event_queue_t::poll_event_before(event_t &out, double time)
 {
   bool set = false;
-  dispatch_barrier_sync(queue_, [&out, &set, this, time]() {
-    if (!events_.empty()) {
-      event_list_t::const_iterator iter;
-      event_list_t::const_iterator end = events_.cend();
-      if (last_time_ != time) {
-        iter = events_.cbegin();
-        last_time_ = time;
-      } else {
-        if (last_event_ == end) {
-          return;
-        }
-        iter = last_event_;
+  std::lock_guard<std::mutex> lock(lock_);
+  if (!events_.empty()) {
+    event_list_t::const_iterator iter;
+    event_list_t::const_iterator end = events_.cend();
+    if (last_time_ != time) {
+      iter = events_.cbegin();
+      last_time_ = time;
+    } else {
+      if (last_event_ == end) {
+        return set;
       }
-      for (; iter != end; ++iter) {
-        if (iter->time <= time) {
-          set = true;
-          out = *iter;
-          iter = events_.erase(iter);
-          break;
-        }
-      }
-      last_event_ = iter;
+      iter = last_event_;
     }
-  });
+    for (; iter != end; ++iter) {
+      if (iter->time <= time) {
+        set = true;
+        out = *iter;
+        iter = events_.erase(iter);
+        break;
+      }
+    }
+    last_event_ = iter;
+  }
   return set;
 }
 
@@ -305,20 +283,21 @@ bool event_queue_t::poll_event_before(event_t &out, double time)
 void event_queue_t::emit_event(const event_t &event)
 {
   const event_t copy = event;
-  dispatch_barrier_async(queue_, [&, copy]() {
-    events_.push_back(copy);
-    if (last_event_ == events_.cend()) {
-      --last_event_;
-    }
-  });
+  std::lock_guard<std::mutex> lock(lock_);
+  events_.push_back(copy);
+  if (last_event_ == events_.cend()) {
+    last_event_ = events_.cend();
+    --last_event_;
+  }
 }
 
 
 
 auto event_queue_t::event_queue() const -> event_list_t
 {
+  std::lock_guard<std::mutex> lock(lock_);
   event_list_t copy;
-  dispatch_barrier_sync(queue_, [&]() { copy = events_; });
+  copy = events_;
   return copy;
 }
 

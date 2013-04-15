@@ -1,0 +1,8 @@
+#ifndef __SNOW__BUILD_CONFIG_HH_IN__
+#define __SNOW__BUILD_CONFIG_HH_IN__
+
+#ifndef USE_EXCEPTIONS
+#define USE_EXCEPTIONS (${USE_EXCEPTIONS})
+#endif
+
+#endif /* end __SNOW__BUILD_CONFIG_HH_IN__ include guard */

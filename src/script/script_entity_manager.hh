@@ -1,7 +1,7 @@
 #ifndef __SNOW__SCRIPT_ENTITY_MANAGER_HH__
 #define __SNOW__SCRIPT_ENTITY_MANAGER_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <lua.hpp>
 #include "script_utility.hh"
 

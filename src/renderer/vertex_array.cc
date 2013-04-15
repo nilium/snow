@@ -54,7 +54,7 @@ rvertex_array_t &rvertex_array_t::operator = (rvertex_array_t &&other)
 {
   if (&other != this) {
     if (&state_ != &other.state_) {
-      throw std::invalid_argument("Cannot move vertex array - GL states do not match");
+      s_throw(std::invalid_argument, "Cannot move vertex array - GL states do not match");
     }
     unload();
 
@@ -198,7 +198,7 @@ void rvertex_array_t::force_load()
   if (initfn_) {
     inited_ = initfn_(state_);
     if (!inited_) {
-      throw std::runtime_error("Initializing vertex array object failed");
+      s_throw(std::runtime_error, "Initializing vertex array object failed");
     }
     // In case the init function doesn't do error checking, which it should.
     // Check after inited_ though, since the init function might be reporting

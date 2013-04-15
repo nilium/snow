@@ -4,7 +4,7 @@
 
 #include "cl_main.hh"
 #include "../event_queue.hh"
-#include "../system.hh"
+#include "../sys_main.hh"
 #include "../renderer/gl_error.hh"
 
 #include <snow-common.hh>
@@ -21,7 +21,9 @@
 namespace snow {
 
 
+#ifndef USE_LOCAL_SERVER
 #define USE_LOCAL_SERVER  (0)
+#endif
 #define UP_BANDWIDTH      (14400 / 8)
 #define DOWN_BANDWIDTH    (57600 / 8)
 #define GL_QUEUE_NAME     "net.spifftastic.snow.gl_queue"
@@ -59,7 +61,7 @@ void cl_global_init()
     s_log_note("---------------- STATIC INIT FINISHED ----------------");
 
     if (enet_initialize() != 0) {
-      throw std::runtime_error("Error initializing enet - failing");
+      s_throw(std::runtime_error, "Error initializing enet - failing");
     }
   });
 }
@@ -86,7 +88,7 @@ dispatch_queue_t cl_main_queue()
 client_t &client_t::get_client(int client_num)
 {
   if (client_num != DEFAULT_CLIENT_NUM)
-    throw std::out_of_range("Invalid client number provided to client_t::get_client");
+    s_throw(std::out_of_range, "Invalid client number provided to client_t::get_client");
 
   return g_client;
 }
@@ -117,7 +119,7 @@ void client_t::initialize(int argc, const char *argv[])
   window_ = glfwCreateWindow(800, 600, "Snow", NULL, NULL);
   if (!window_) {
     s_log_note("Window failed to initialize");
-    throw std::runtime_error("Failed to create GLFW window");
+    s_throw(std::runtime_error, "Failed to create GLFW window");
   } else {
     s_log_note("Window initialized");
   }
@@ -134,7 +136,7 @@ void client_t::initialize(int argc, const char *argv[])
   s_log_note("Creating local client");
   host_ = enet_host_create(NULL, 1, 2, DOWN_BANDWIDTH, UP_BANDWIDTH);
   if (host_ == NULL) {
-    throw std::runtime_error("Unable to create client host");
+    s_throw(std::runtime_error, "Unable to create client host");
   }
 
   s_log_note("Starting local server");
@@ -145,7 +147,7 @@ void client_t::initialize(int argc, const char *argv[])
   enet_address_set_host(&server_addr, "127.0.0.1");
   server_addr.port = server_t::DEFAULT_SERVER_PORT;
   if (!connect(server_addr)) {
-    throw std::runtime_error("Unable to connect to local server");
+    s_throw(std::runtime_error, "Unable to connect to local server");
   }
 #endif
 

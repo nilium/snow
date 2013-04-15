@@ -1,7 +1,7 @@
 #ifndef __SNOW__MAT4_SCRIPT_HH__
 #define __SNOW__MAT4_SCRIPT_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/mat4.hh>
 #include <lua.hpp>
 

@@ -8,6 +8,9 @@
 #include <algorithm>
 
 
+namespace u8 = utf8::unchecked;
+
+
 namespace snow {
 
 
@@ -73,6 +76,48 @@ const string &rfont_t::name() const
 
 
 
+auto rfont_t::line_height() const -> float
+{
+  return line_height_;
+}
+
+
+
+auto rfont_t::leading() const -> float
+{
+  return leading_;
+}
+
+
+
+auto rfont_t::ascent() const -> float
+{
+  return ascent_;
+}
+
+
+
+auto rfont_t::descent() const -> float
+{
+  return descent_;
+}
+
+
+
+auto rfont_t::bbox_min() const -> const vec2f_t &
+{
+  return bbox_min_;
+}
+
+
+
+auto rfont_t::bbox_max() const -> const vec2f_t &
+{
+  return bbox_max_;
+}
+
+
+
 /*==============================================================================
   font_page_count
 
@@ -122,11 +167,12 @@ void rfont_t::draw_text(
   rdraw_2d_t &draw,
   const vec2f_t &baseline,
   const string &text,
+  const vec4_t<uint8_t> &color,
   float scale) const
 {
   vec2f_t pos = {
     baseline.x,
-    baseline.y + ascent_ * scale
+    baseline.y// + ascent_ * scale
   };
   vec2f_t head = pos;
 
@@ -134,20 +180,23 @@ void rfont_t::draw_text(
   auto iter = text.begin();
   auto str_end = utf8::find_invalid(iter, text.end());
   auto glyph_end = glyphs_.cend();
+  // unknown character
+  glyphmap_t::const_iterator unknown = glyphs_.find(0xFFFD /* replacement character */ );
 
   while (iter != str_end) {
-    uint32_t code = utf8::next(iter, str_end);
+    uint32_t code = u8::next(iter);
 
     if (code == '\n') {
       last_code = -1;
       head.y -= line_height_ * scale;
       pos = head;
       continue;
-    } else if (code < ' ') {
-      continue;
     }
 
     glyphmap_t::const_iterator glyph_iter = glyphs_.find(code);
+    if (glyph_iter == glyph_end) {
+      glyph_iter = unknown;
+    }
 
     if (glyph_iter != glyph_end) {
       const glyph_t &glyph = glyph_iter->second;
@@ -160,7 +209,7 @@ void rfont_t::draw_text(
         if (glyph.size.x * glyph.size.y > 0) {
           draw.draw_rect_raw(
             pos + glyph.offset * scale, glyph.size * scale,
-            {255, 255, 255, 255},
+            color,
             page_mat,
             glyph.uv_min, glyph.uv_max);
         }
@@ -197,65 +246,58 @@ float rfont_t::kern_for(uint32_t first, uint32_t second) const
 void rfont_t::load_from_db(database_t &db)
 {
   if (!db.is_open()) {
-    throw std::invalid_argument("Database is not open");
+    s_throw(std::invalid_argument, "Database is not open");
   }
 
   // To save on error handling code, let the DB throw if something bad happens
   bool throw_reset = db.throw_on_error();
   db.set_throw_on_error(true);
 
-  try {
-    int font_id = INT_MIN;    // Font row ID in the database
-    unsigned num_glyphs, num_kerns;
+  int font_id = INT_MIN;    // Font row ID in the database
+  unsigned num_glyphs, num_kerns;
 
-    // Look for font info for the given name, throw exception if none found
-    {
-      dbstatement_t info_query = db.prepare(font_info_query_string);
-      info_query.bind_text_static(":font_id", name_);
+  // Look for font info for the given name, throw exception if none found
+  {
+    dbstatement_t info_query = db.prepare(font_info_query_string);
+    info_query.bind_text_static(":font_id", name_);
 
-      for (dbresult_t &fir : info_query) {
-        font_id      = fir.column_int("font_id");
-        line_height_ = fir.column_float("line_height");
-        leading_     = fir.column_float("leading");
-        ascent_      = fir.column_float("ascent");
-        descent_     = fir.column_float("descent");
-        bbox_min_    = { fir.column_float("bbox_min_x"), fir.column_float("bbox_min_y") };
-        bbox_max_    = { fir.column_float("bbox_max_x"), fir.column_float("bbox_max_y") };
-        pages_.resize(fir.column_uint("pages"));
-        page_size_   = {
-          fir.column_uint("page_width"),
-          fir.column_uint("page_height")
-        };
+    for (dbresult_t &fir : info_query) {
+      font_id      = fir.column_int("font_id");
+      line_height_ = fir.column_float("line_height");
+      leading_     = fir.column_float("leading");
+      ascent_      = fir.column_float("ascent");
+      descent_     = fir.column_float("descent");
+      bbox_min_    = { fir.column_float("bbox_min_x"), fir.column_float("bbox_min_y") };
+      bbox_max_    = { fir.column_float("bbox_max_x"), fir.column_float("bbox_max_y") };
+      pages_.resize(fir.column_uint("pages"));
+      page_size_   = {
+        fir.column_uint("page_width"),
+        fir.column_uint("page_height")
+      };
 
-        num_glyphs   = fir.column_uint("num_glyphs");
-        num_kerns    = fir.column_uint("num_kernings");
-      }
+      num_glyphs   = fir.column_uint("num_glyphs");
+      num_kerns    = fir.column_uint("num_kernings");
     }
-
-    // Crap pants if no font found.
-    if (font_id == INT_MIN) {
-      throw std::invalid_argument("No font with given name found");
-    }
-
-    // Load kerns/glyphs as needed
-    if (num_glyphs) {
-      load_glyphs_from_db(db, font_id);
-    }
-
-    if (num_kerns) {
-      load_kerns_from_db(db, font_id);
-    }
-
-    // TODO: Load page materials (<NAME>_<PAGENUM>.png)
-    // pages[N] = get_material(...);
-
-    db.set_throw_on_error(throw_reset);
-  // end try
-  } catch (std::exception &ex) {
-    // Restore previous throw_on_error state for the DB then continue the throw
-    db.set_throw_on_error(throw_reset);
-    throw;
   }
+
+  // Crap pants if no font found.
+  if (font_id == INT_MIN) {
+    s_throw(std::invalid_argument, "No font with given name found");
+  }
+
+  // Load kerns/glyphs as needed
+  if (num_glyphs) {
+    load_glyphs_from_db(db, font_id);
+  }
+
+  if (num_kerns) {
+    load_kerns_from_db(db, font_id);
+  }
+
+  // TODO: Load page materials (<NAME>_<PAGENUM>.png)
+  // pages[N] = get_material(...);
+
+  db.set_throw_on_error(throw_reset);
 }
 
 
@@ -279,21 +321,21 @@ void rfont_t::load_glyphs_from_db(database_t &db, const int font_id)
     // Round the glyph values to its pixel edges so they're used without
     // odd filtering issues.
     glyph.uv_min = {
-      std::floor(fgr.column_float("frame_x")),
-      std::floor(fgr.column_float("frame_y"))
+      fgr.column_float("frame_x"),
+      fgr.column_float("frame_y")
     };
     glyph.uv_max = glyph.uv_min + vec2f_t::make(
-      std::ceil(fgr.column_float("frame_width")),
-      std::ceil(fgr.column_float("frame_height"))
+      fgr.column_float("frame_width"),
+      fgr.column_float("frame_height")
     );
     glyph.size    = glyph.uv_max - glyph.uv_min;
     glyph.advance = {
-      std::floor(fgr.column_float("advance_x")),
-      std::floor(fgr.column_float("advance_y"))
+      fgr.column_float("advance_x"),
+      fgr.column_float("advance_y")
     };
     glyph.offset  = {
-      std::floor(fgr.column_float("offset_x")),
-      std::floor(fgr.column_float("offset_y"))
+      fgr.column_float("offset_x"),
+      fgr.column_float("offset_y")
     };
 
     glyph.uv_min   *= page_scale;

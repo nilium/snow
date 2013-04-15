@@ -1,7 +1,7 @@
 #ifndef __SNOW__DATABASE_ITERATOR_HH__
 #define __SNOW__DATABASE_ITERATOR_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "database_local.hh"
 #include "database_result.hh"
 #include <iterator>

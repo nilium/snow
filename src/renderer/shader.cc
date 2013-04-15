@@ -26,7 +26,7 @@ rshader_t &rshader_t::operator = (rshader_t &&other)
 {
   if (this != &other) {
     if (&state_ != &other.state_)
-      throw std::invalid_argument("Unable to move shader: GL state objects "
+      s_throw(std::invalid_argument, "Unable to move shader: GL state objects "
                                   "differ");
 
     unload();
@@ -53,7 +53,7 @@ rshader_t::~rshader_t()
 void rshader_t::load_source(const string &source)
 {
   if (!valid())
-    throw std::runtime_error("Attempt to load source for invalid shader "
+    s_throw(std::runtime_error, "Attempt to load source for invalid shader "
                              "object");
 
   const char *shader_sources[1] = {

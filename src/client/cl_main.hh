@@ -1,11 +1,13 @@
 #ifndef __SNOW_CL_MAIN_HH__
 #define __SNOW_CL_MAIN_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/types/object_pool.hh>
+#include "../dispatch.hh"
 #include "../net/netevent.hh"
 #include "../event_queue.hh"
 #include "../renderer/gl_state.hh"
+#include "../console.hh"
 #include <enet/enet.h>
 #include <atomic>
 #include <list>
@@ -82,6 +84,7 @@ private:
   gl_state_t                state_;
   std::list<system_pair_t>  systems_ { };
   netevent_pool_t           netevent_pool_;
+  cvar_set_t                cvars_;
 };
 
 

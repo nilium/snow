@@ -1,7 +1,7 @@
 #ifndef __SNOW__SHADER_HH__
 #define __SNOW__SHADER_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "sgl.hh"
 
 namespace snow {

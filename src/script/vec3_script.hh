@@ -1,7 +1,7 @@
 #ifndef __SNOW__VEC3_SCRIPT_HH__
 #define __SNOW__VEC3_SCRIPT_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/vec3.hh>
 #include <lua.hpp>
 

@@ -1,7 +1,7 @@
 #ifndef __SNOW__VERTEX_ARRAY_HH__
 #define __SNOW__VERTEX_ARRAY_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "sgl.hh"
 #include <functional>
 

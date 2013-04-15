@@ -1,8 +1,9 @@
 #ifndef __SNOW__TEXTURE_HH__
 #define __SNOW__TEXTURE_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "sgl.hh"
+#include "../ext/stb_image.h"
 
 
 namespace snow {
@@ -80,6 +81,20 @@ private:
   GLenum target_;
   int width_, height_, depth_;
 };
+
+
+enum texture_components_t : int
+{
+  TEX_COMP_DEFAULT = STBI_default,
+  TEX_COMP_GREY = STBI_grey,
+  TEX_COMP_GREY_ALPHA = STBI_grey_alpha,
+  TEX_COMP_RGB = STBI_rgb,
+  TEX_COMP_RGBA = STBI_rgb_alpha
+};
+
+
+rtexture_t load_texture_2d(gl_state_t &gl, const string &path, bool gen_mipmaps = true,
+  texture_components_t required_components = TEX_COMP_DEFAULT);
 
 
 } // namespace snow

@@ -4,7 +4,7 @@
 #ifndef __SNOW__FONT_HH__
 #define __SNOW__FONT_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/math3d.hh>
 #include <map>
 #include <utility>
@@ -26,13 +26,22 @@ struct rfont_t
   ~rfont_t();
 
   auto name() const -> const string &;
+  auto line_height() const -> float;
+  auto leading() const -> float;
+  auto ascent() const -> float;
+  auto descent() const -> float;
+  auto bbox_min() const -> const vec2f_t &;
+  auto bbox_max() const -> const vec2f_t &;
 
   auto font_page_count() const -> int;
   void set_font_page(int page, rmaterial_t *mat);
   auto font_page(int page) const -> rmaterial_t *;
 
   void draw_text(rdraw_2d_t &draw, const vec2f_t &baseline, const string &text,
+                 const vec4_t<uint8_t> &color = { 255, 255, 255, 255 },
                  float scale = 1.0f) const;
+
+
 
 private:
 

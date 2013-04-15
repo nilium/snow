@@ -4,6 +4,8 @@
 #include "gl_state.hh"
 #include "material.hh"
 #include "vertex_array.hh"
+#include <cstring>
+
 
 namespace snow {
 
@@ -73,7 +75,7 @@ rdraw_2d_t &rdraw_2d_t::operator = (rdraw_2d_t &&other)
 {
   if (&other != this) {
     if (!gl_state_t::compatible(*this, other)) {
-      throw std::invalid_argument("Cannot move 2D drawer: GL states are incompatible");
+      s_throw(std::invalid_argument, "Cannot move 2D drawer: GL states are incompatible");
     }
 
     transform_ = other.transform_;
@@ -123,7 +125,7 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices
     if (cur_material != current.material) {
       cur_material = current.material;
       if (!cur_material)
-        throw std::runtime_error("Material is null");
+        s_throw(std::runtime_error, "Material is null");
       cur_material->set_modelview(mat4f_t::identity);
       set_proj = true;
     }
@@ -193,23 +195,22 @@ rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
   // Build vao without initializer
   auto previous_vao = (restore_vao ? state_.vertex_array() : 0);
   vao.bind();
+  vertices.bind();
 
   // Enable attribute arrays
   state_.set_attrib_array_enabled(pos_attrib, true);
   state_.set_attrib_array_enabled(col_attrib, true);
   state_.set_attrib_array_enabled(tex_attrib, true);
 
+
   // Bind vertex attributes to buffer offsets
-  glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE,
-    (sizeof(vertex_t) - sizeof(vertex_t::position)),
+  glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
     (const GLvoid *)(vb_where + offsetof(vertex_t, position)));
   assert_gl("Setting vertex position attrib");
-  glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE,
-    (sizeof(vertex_t) - sizeof(vertex_t::texcoord)),
+  glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
     (const GLvoid *)(vb_where + offsetof(vertex_t, texcoord)));
   assert_gl("Setting vertex texture coords attrib");
-  glVertexAttribPointer(col_attrib, 4, GL_UNSIGNED_BYTE, GL_TRUE,
-    (sizeof(vertex_t) - sizeof(vertex_t::color)),
+  glVertexAttribPointer(col_attrib, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t),
     (const GLvoid *)(vb_where + offsetof(vertex_t, color)));
   assert_gl("Setting vertex color attrib");
 
@@ -384,6 +385,31 @@ void rdraw_2d_t::draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
 
 
 
+void rdraw_2d_t::draw_triangles(
+  const vertex_t *const verts, const GLsizeiptr num_verts,
+  const face_t *const tris, const GLsizeiptr num_tris,
+  rmaterial_t *const material)
+{
+  draw_stage_t &stage = push_draw_stage(material, num_verts);
+
+  const auto vb_length = vertices_.size();
+  const uint16_t base_vertex = uint16_t(vb_length - stage.base_vertex);
+  vertices_.resize(vb_length + num_verts);
+  faces_.reserve(faces_.size() + num_tris);
+
+  std::memcpy(&vertices_[vb_length], verts, num_verts * sizeof(*verts));
+
+  for (int tri_index = 0; tri_index < num_tris; ++tri_index) {
+    face_t face = tris[tri_index];
+    face.v0 += base_vertex;
+    face.v1 += base_vertex;
+    face.v2 += base_vertex;
+    faces_.push_back(face);
+  }
+}
+
+
+
 void rdraw_2d_t::set_rotation(const float angle_deg)
 {
   rotation_ = angle_deg;
@@ -439,7 +465,7 @@ auto rdraw_2d_t::push_draw_stage(rmaterial_t *const material,
   const GLint vertices_needed) -> draw_stage_t &
 {
   if (material == NULL) {
-    throw std::invalid_argument("Material cannot be NULL");
+    s_throw(std::invalid_argument, "Material cannot be NULL");
   }
   if (!stages_.empty()) {
     // keep inside if-block since the current stage will be invalidated if it's

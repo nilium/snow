@@ -1,7 +1,7 @@
 #ifndef __SNOW__NETEVENT_HH__
 #define __SNOW__NETEVENT_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <enet/enet.h>
 #include <vector>
 

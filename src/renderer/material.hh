@@ -1,7 +1,7 @@
 #ifndef __SNOW__MATERIAL_HH__
 #define __SNOW__MATERIAL_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/math3d.hh>
 
 #include <functional>
@@ -21,7 +21,7 @@ struct rmaterial_t
   inline void do_per_pass(pass_fn_t &&fn)
   {
     if (!valid()) {
-      throw std::invalid_argument("Material is not valid");
+      s_throw(std::invalid_argument, "Material is not valid");
     }
     const int num_passes = passes();
     for (int pass = 0; pass < num_passes; ++pass) {

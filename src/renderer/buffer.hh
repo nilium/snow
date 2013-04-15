@@ -1,7 +1,7 @@
 #ifndef __SNOW__BUFFER_HH__
 #define __SNOW__BUFFER_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "sgl.hh"
 
 namespace snow {

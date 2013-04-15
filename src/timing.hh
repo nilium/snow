@@ -5,7 +5,7 @@ namespace snow {
 
 
 constexpr double FRAME_SECOND = 1.0;
-constexpr double FRAME_HERTZ = 60.0;
+constexpr double FRAME_HERTZ = 50.0;
 constexpr double FRAME_SEQ_TIME = FRAME_SECOND / FRAME_HERTZ;
 
 

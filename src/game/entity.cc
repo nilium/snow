@@ -129,9 +129,9 @@ auto entity_t::children() const -> list_t
 void entity_t::add_child(entity_t *entity)
 {
   if (entity->manager_ != manager_) {
-    throw std::invalid_argument("Entity belongs to a different entity manager");
+    s_throw(std::invalid_argument, "Entity belongs to a different entity manager");
   } else if (entity->parent()) {
-    throw std::runtime_error("Entity already has a parent");
+    s_throw(std::runtime_error, "Entity already has a parent");
   }
 
   entity->child_link_ = children_.insert(children_.end(), entity->index());
@@ -144,7 +144,7 @@ void entity_t::add_child(entity_t *entity)
 void entity_t::remove_from_parent()
 {
   if (!parent())
-    throw std::runtime_error("Entity does not have a parent");
+    s_throw(std::runtime_error, "Entity does not have a parent");
 
   manager_->get_entity(parent_).children_.erase(child_link_);
   parent_ = NO_ENTITY;

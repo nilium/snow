@@ -1,7 +1,7 @@
-#ifndef __SNOW_SYSTEM_HH__
-#define __SNOW_SYSTEM_HH__
+#ifndef __SNOW__SYS_MAIN_HH__
+#define __SNOW__SYS_MAIN_HH__
 
-#include <snow/config.hh>
+#include "config.hh"
 
 
 namespace snow {
@@ -21,4 +21,5 @@ S_EXPORT void sys_quit();
 
 } // namespace snow
 
-#endif /* end __SNOW_SYSTEM_HH__ include guard */
+#endif /* end __SNOW__SYS_MAIN_HH__ include guard */
+

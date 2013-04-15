@@ -85,7 +85,7 @@ size_t netevent_t::data_length() const
 void netevent_t::read_from(const ENetPacket *const packet)
 {
   if (packet == NULL) {
-    throw std::invalid_argument("ENetPacket is null");
+    s_throw(std::invalid_argument, "ENetPacket is null");
   }
 
   const uint16_t *shortbuf = (const uint16_t *)packet->data;
@@ -117,13 +117,13 @@ void netevent_t::read_from(const ENetPacket *const packet)
 void netevent_t::write_to(ENetPacket *packet)
 {
   if (packet == NULL) {
-    throw std::invalid_argument("ENetPacket is null");
+    s_throw(std::invalid_argument, "ENetPacket is null");
   }
 
   const size_t datalen = data_length();
 
   if (packet->dataLength != datalen && enet_packet_resize(packet, datalen)) {
-    throw std::runtime_error("Failed to resize ENetPacket");
+    s_throw(std::runtime_error, "Failed to resize ENetPacket");
   }
 
   uint16_t *shortbuf = (uint16_t *)packet->data;

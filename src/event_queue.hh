@@ -5,10 +5,9 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <mutex>
 
-#include <dispatch/dispatch.h>
-
-#include <snow/config.hh>
+#include "config.hh"
 #include <snow/types/types_2d.hh>
 #include "renderer/sgl.hh"
 
@@ -185,11 +184,7 @@ struct S_EXPORT event_queue_t
 {
   using event_list_t = std::list<event_t>;
 
-
-  event_queue_t();
-  ~event_queue_t();
-
-  bool          wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
+  // bool          wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
   bool          peek_event(event_t &out) const;
   bool          poll_event(event_t &out);
   bool          poll_event_before(event_t &out, double time);
@@ -201,7 +196,7 @@ struct S_EXPORT event_queue_t
   void          set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
 
 private:
-  dispatch_queue_t  queue_;
+  mutable std::mutex lock_;
   event_list_t      events_;
   double            last_time_ = 0;
   event_list_t::const_iterator last_event_;

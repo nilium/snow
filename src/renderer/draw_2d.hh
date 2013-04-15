@@ -1,7 +1,7 @@
 #ifndef __SNOW__DRAW_2D_HH__
 #define __SNOW__DRAW_2D_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/math3d.hh>
 #include "sgl.hh"
 #include <vector>
@@ -19,6 +19,20 @@ struct rvertex_array_t;
 struct rdraw_2d_t
 {
   friend gl_state_t;
+
+  struct alignas(uint16_t) face_t
+  {
+    uint16_t v0, v1, v2;
+  };
+
+  struct alignas(float) vertex_t
+  {
+    vec2f_t         position;
+    vec2f_t         texcoord;
+    vec4_t<uint8_t> color;
+  };
+
+
 
   rdraw_2d_t(gl_state_t &state);
   ~rdraw_2d_t() = default;
@@ -64,6 +78,8 @@ struct rdraw_2d_t
 *                                2D drawing ops                                *
 *******************************************************************************/
 
+  // Rect drawing
+
   // draw_offset_* methods take a 0-1 position that is scaled to the current
   // screen size as set by set_screen_size(..). A position at 0,0 is the bottom
   // left, 1,1 the top right. Width and height are still measured in whatever
@@ -89,6 +105,12 @@ struct rdraw_2d_t
                      const vec4_t<uint8_t> &color, rmaterial_t *const material,
                      const vec2f_t &uv_min = vec2f_t::zero,
                      const vec2f_t &uv_max = vec2f_t::one);
+
+
+  // This does not attempt to transform the vertices at all
+  void draw_triangles(const vertex_t *const verts, const GLsizeiptr num_verts,
+                      const face_t *const tris, const GLsizeiptr num_tris,
+                      rmaterial_t *const material);
 
 
 /*******************************************************************************
@@ -131,12 +153,6 @@ private:
     uint32_t        num_indices;
   };
 
-  struct alignas(float) vertex_t {
-    vec2f_t         position;
-    vec2f_t         texcoord;
-    vec4_t<uint8_t> color;
-  };
-
   // Check that vertex components are packed
   static_assert(offsetof(vertex_t, position) + sizeof(vertex_t::position)
                 == offsetof(vertex_t, texcoord),
@@ -146,7 +162,6 @@ private:
                 "Vertex has padding between texcoord and color");
 
 
-  using face_t    = vec3_t<uint16_t>;
   using vbuffer_t = std::vector<vertex_t>;
   using fbuffer_t = std::vector<face_t>;
   using sbuffer_t = std::vector<draw_stage_t>;

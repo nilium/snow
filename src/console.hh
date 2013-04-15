@@ -1,7 +1,7 @@
 #ifndef __SNOW__CONSOLE_HH__
 #define __SNOW__CONSOLE_HH__
 
-#include <snow/config.hh>
+#include "config.hh"
 #include "data/database.hh"
 #include <list>
 #include <mutex>
@@ -14,29 +14,46 @@ namespace snow {
 
 enum cvar_flags_t : int
 {
-  // cvar is read-only at runtime.
+  // Note: all cvar flags that restrict write access are ignored when the cvar
+  // is forcibly set to a value.
+  // Cvar is read-only at runtime.
   CVAR_READ_ONLY        = 0x1 << 0,
-  // cvar is intended only for program initialization and should not be changed
+  // Cvar is intended only for program initialization and should not be changed
   // afterward
   CVAR_INIT_ONLY        = 0x1 << 1,
-  // cvar is saved when write_cvars is called.
+  // Cvar is saved when write_cvars is called.
   CVAR_SAVED            = 0x1 << 2,
-  // cvar is for cheating/debugging only and should cannot be changed if cheats
+  // Cvar is for cheating/debugging only and should cannot be changed if cheats
   // are disabled.
   CVAR_CHEAT            = 0x1 << 3,
-  // cvar changes should be sent to the server and ergo all clients.
+  // Cvar changes should be sent to the server and ergo all clients.
   // this implies CVAR_SERVER even if unset.
   CVAR_CLIENT           = 0x1 << 4,
-  // cvar changes should be sent to the server (may result in the server
-  // rejecting the change and sending a cvar-set command back)
+  // Cvar changes should be sent to the server (may result in the server
+  // rejecting the change and sending a cvar-set command back [or a revoke]).
   CVAR_SERVER           = 0x1 << 5,
-  // cvar is user created (usually goes with CVAR_DEALLOC)
-  CVAR_USER             = 0x1 << 7,
-  // changes to the cvar are delayed until the next frame -- recommended for
-  // most purposes since it'll keep internal db transactions down.
-  CVAR_DELAYED          = 0x1 << 8,
-  // cvar has been modified (do not set this yourself -- it's not needed)
-  CVAR_MODIFIED         = 0x1 << 24,
+  // cvar is user created (usually goes with CVAR_DEALLOC).
+  CVAR_USER             = 0x1 << 6,
+  // Changes to the cvar are delayed until cvar_set_t::update_cvars is called
+  // if the cvar is bound to a cvar_set_t. Otherwise, has no effect.
+  CVAR_DELAYED          = 0x1 << 7,
+  // Cvar has been modified (do not set this yourself -- it's not needed)
+  CVAR_MODIFIED         = 0x1 << 16,
+  CVAR_HAS_CACHE        = CVAR_DELAYED | CVAR_MODIFIED,
+
+  // cvar types
+  CVAR_INT              = 0x1 << 21,
+  CVAR_FLOAT            = 0x1 << 22,
+  CVAR_STRING           = 0x1 << 23,
+  CVAR_TYPE_MASK        = CVAR_INT | CVAR_FLOAT | CVAR_STRING,
+
+  // cached cvar types
+  CVAR_CACHED_INT       = 0x1 << 24,
+  CVAR_CACHED_FLOAT     = 0x1 << 25,
+  CVAR_CACHED_STRING    = 0x1 << 26,
+  CVAR_CACHED_MASK      = CVAR_CACHED_INT | CVAR_CACHED_FLOAT | CVAR_CACHED_STRING,
+  CVAR_CACHE_STRIP_MASK = ~(CVAR_MODIFIED | CVAR_TYPE_MASK | CVAR_CACHED_MASK),
+  CVAR_TYPE_SHIFT       = 3,
 
   // Some common combinations
   CVAR_FLAGS_DEFAULT    = CVAR_DELAYED,
@@ -66,23 +83,27 @@ struct cvar_t
   int flags() const;
   bool has_flags(int flags) const;
 
-  int getl() const;
+  int type() const;
+
+  int geti() const;
   float getf() const;
   const string &gets() const;
 
   // Always checks cvar permissions before setting
-  void setl(int value);
+  void seti(int value);
   void setf(float value);
   void sets(const string &value);
 
-  // If forced, will ignore cvar permissions temporarily. Avoid using these
-  // in game code.
-  void setl_force(int value, bool force);
+  // If forced, will ignore cvar permissions temporarily. If allowing the user
+  // to arbitrarily set flags, do not set 'force' to true for their actions.
+  void seti_force(int value, bool force);
   void setf_force(float value, bool force);
   void sets_force(const string &value, bool force);
 
   // Revokes cached changes to the cvar (if delayed). If using an iterator,
-  // the iterator for this cvar will be invalidated.
+  // the iterator for this cvar will be invalidated. It would be better to
+  // keep your own list of cvars you'll revoke changes to and iterate over it
+  // to revoke changes so you don't accidentally end up with an invalid iter.
   void revoke_changes();
 
 private:
@@ -94,12 +115,12 @@ private:
   void update();
 
   struct cvar_set_t *owner_;
-  int     flags_;     // associated flags
-  int     int_value_;   // atoi(value_.c_str()) (atoX skips exceptions)
-  float   float_value_; // atof(value_.c_str())
-  string  name_;   // cvar name
-  string  value_;  // to_string(int or float)
-  string  cache_;  // cached value (not the value retreived prior to update)
+  int             flags_;     // associated flags
+  int             int_value_;   // atoi(value_.c_str()) (atoX skips exceptions)
+  float           float_value_; // atof(value_.c_str())
+  string          name_;   // cvar name
+  string          value_;  // to_string(int or float)
+  string          cache_;  // cached value (not retreived prior to update)
   std::list<cvar_t *>::const_iterator update_iter_;
 };
 
@@ -126,9 +147,20 @@ struct cvar_set_t
   // will be ignored.
   void read_cvars(database_t &db);
 
+  // Tries to find a cvar with the given name, returns it if it exists. Returns
+  // nullptr otherwise.
   cvar_t *get_cvar(const string &name) const;
+  // Tries to find a cvar with the given name, returns it if it exists. If it
+  // doesn't exist, a new cvar will be created with the provided default_value
+  // and default_flags and registered in the cvar set.
+  cvar_t *get_cvar(const string &name,
+    const string &default_value,
+    int default_flags = CVAR_FLAGS_DEFAULT);
 
-  // Allocates a cvar using an internal vector of cvars and registers it.
+  // Allocates a cvar using an internal vector of cvars and returns it.
+  // This does not register the cvar in the cvar_set_t, though the pointer to
+  // the returned cvar will be invalid either after the cvar set's destruction
+  // or after clear() is called.
   cvar_t *make_cvar(const string &name, int value, int flags = CVAR_FLAGS_DEFAULT);
   cvar_t *make_cvar(const string &name, float value, int flags = CVAR_FLAGS_DEFAULT);
   cvar_t *make_cvar(const string &name, const string &value, int flags = CVAR_FLAGS_DEFAULT);
@@ -148,7 +180,7 @@ struct cvar_set_t
 private:
   friend struct cvar_t;
 
-  std::map<string, cvar_t *> cvars_   { };
+  std::map<size_t, cvar_t *> cvars_   { };
   ptr_list_t update_cvars_ { };
   std::vector<cvar_t> temp_cvars_     { };
 };

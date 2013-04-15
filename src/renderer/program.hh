@@ -1,7 +1,7 @@
 #ifndef __SNOW__PROGRAM_HH__
 #define __SNOW__PROGRAM_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "sgl.hh"
 #include <map>
 #include <set>
@@ -30,7 +30,7 @@ struct S_EXPORT rprogram_t
   rprogram_t &operator = (const rprogram_t &) = delete;
 
   // equiv. to glUseProgram
-  // Will throw std::runtime_error if usable() returns false.
+  // Will s_throw(std::runtime_error if usable, ) returns false.
   void            use();
 
   // Binds the key to the uniform name. This can be done either before or after

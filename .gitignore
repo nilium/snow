@@ -1,4 +1,4 @@
-bin/snow
+bin
 *.sublime-*
 Makefile.sources
 *.o
@@ -9,3 +9,7 @@ Makefile.sources
 *.exe
 *.app
 *.ignore
+src/build-config.hh
+*.make
+Makefile
+obj

@@ -1,7 +1,7 @@
 #ifndef __SNOW__GL_STATE_HH__
 #define __SNOW__GL_STATE_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include "sgl.hh"
 #include <vector>
 #include <utility>

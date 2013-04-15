@@ -1,7 +1,7 @@
 #ifndef __SNOW_SV_MAIN_HH__
 #define __SNOW_SV_MAIN_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <enet/enet.h>
 #include <atomic>
 

@@ -6,7 +6,7 @@ namespace snow {
 
 
 #define throw_if_closed(LIT) \
-  if (!is_open()) throw std::runtime_error((LIT));
+  if (!is_open()) s_throw(std::runtime_error, LIT);
 
 
 
@@ -84,7 +84,7 @@ void database_t::prepare(const string &sql, const prepare_fn_t &fn)
 {
   throw_if_closed("Cannot prepare a statement: DB is closed");
   if (!fn) {
-    throw std::invalid_argument("Cannot call prepare(sql, fn) with null function");
+    s_throw(std::invalid_argument, "Cannot call prepare(sql, fn) with null function");
   } else {
     dbstatement_t stmt = prepare(sql);
     if (!stmt.is_finalized()) {
@@ -158,7 +158,7 @@ int database_t::check_error(int code)
                   : sqlite3_errstr(code));
     s_log_error("SQLite3 Error: %s", error_msg_.c_str());
     if (throw_on_error_) {
-      throw std::runtime_error(error_msg_);
+      s_throw(std::runtime_error, "SQLite3 Error: %s", error_msg_.c_str());
     }
   } else {
     error_msg_.clear();

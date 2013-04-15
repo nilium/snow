@@ -1,7 +1,7 @@
 #ifndef __SNOW__MESH_HH__
 #define __SNOW__MESH_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/math3d.hh>
 #include <vector>
 #include "sgl.hh"

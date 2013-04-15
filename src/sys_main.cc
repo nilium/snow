@@ -1,4 +1,4 @@
-#include "system.hh"
+#include "sys_main.hh"
 #include "renderer/sgl.hh"
 #include <enet/enet.h>
 #include <physfs.h>
@@ -9,6 +9,7 @@
 #include <list>
 #include <sys/stat.h>
 #include "data/physicsfs_vfs.hh"
+
 
 namespace snow {
 
@@ -37,8 +38,7 @@ void create_directory_if_not_exists(const char *dir)
   const int mode = S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
   int succ = mkdir(dir, mode);
   if (!succ && errno != EEXIST) {
-    s_log_error("Unable to create directory %s", dir);
-    throw std::runtime_error("Unable to create directory");
+    s_throw(std::runtime_error, "Unable to create directory %s", dir);
   }
 }
 
@@ -51,12 +51,12 @@ void create_write_dir(const char *dir)
   std::memset(dirdup, 0, MAX_PATH_LEN);
   size_t len;
   if (!dir) {
-    throw std::invalid_argument("Write directory is NULL");
+    s_throw(std::invalid_argument, "Write directory is NULL");
   }
 
   len = std::strlen(dir);
   if (len > MAX_PATH_LEN) {
-    throw std::invalid_argument("Write path too long");
+    s_throw(std::invalid_argument, "Write path too long");
   } else if (*dir == '/' && len <= 1) {
     return; // nop -- / always exists.
   }
@@ -123,7 +123,7 @@ void mount_snowballs()
 
 void set_physfs_config()
 {
-  #define perr(EXPR) if (!(EXPR)) throw std::runtime_error(PHYSFS_getLastError());
+  #define perr(EXPR ) if (!(EXPR)) s_throw(std::runtime_error, "%s", PHYSFS_getLastError());
 
   int result = 0;
   char temp_path[MAX_PATH_LEN];
@@ -131,12 +131,20 @@ void set_physfs_config()
 
   const char *pfs_base_dir = PHYSFS_getBaseDir();
   const char *pfs_pref_dir = PHYSFS_getPrefDir("Spifftastic", "Snow");
+  const char *base_suffix = std::strrchr(pfs_base_dir, '.');
+  if (base_suffix && std::strlen(base_suffix) == 5 &&
+    sqlite3_strnicmp(base_suffix, ".app/", 5) == 0) {
+    base_suffix = "Contents/Resources/";
+  } else {
+    base_suffix = "";
+  }
 
   // TODO: Check game cvar, load that in addition to the base dir (if
   // MOUNT_BASE_ALWAYS is defined).
   // e.g., if (game_dir != base) mount(game_dir, "/", 1);
   // That way the search path is included when looking for snowballs below.
   string game_dir = default_game_dir; // cvar_string("fs_game", "base")
+  const bool is_base = (game_dir == default_game_dir);
 
   // Mount write directory for specific game
   sqlite3_snprintf(MAX_PATH_LEN, temp_path, "%s%s", pfs_pref_dir, game_dir.c_str());
@@ -153,25 +161,30 @@ void set_physfs_config()
       create_write_dir(temp_path);
       goto mount_write_dir;
     }
-    s_log_error("PhysFS Error: %s", PHYSFS_getErrorByCode(code));
-    throw std::runtime_error("Unable to mount user game directory, PhysicsFS init failed");
+    s_throw(std::runtime_error, "PhysFS Error: %s", PHYSFS_getErrorByCode(code));
   }
 
   // Mount base directory for specific game
-  sqlite3_snprintf(MAX_PATH_LEN, temp_path, "%s%s", pfs_base_dir, game_dir.c_str());
+  sqlite3_snprintf(MAX_PATH_LEN, temp_path, "%s%s%s", pfs_base_dir, base_suffix, game_dir.c_str());
   s_log_note("Mounting %s as game directory", temp_path);
   if (!PHYSFS_mount(temp_path, "/", 1)) {
     auto code = PHYSFS_getLastErrorCode();
-    s_log_error("PhysFS Error: %s", PHYSFS_getErrorByCode(code));
-    throw std::runtime_error("Unable to mount game directory, PhysicsFS init failed");
+    if (code == PHYSFS_ERR_NOT_FOUND && !is_base) {
+      sqlite3_snprintf(MAX_PATH_LEN, temp_path, "%s%s", pfs_pref_dir, game_dir.c_str());
+      s_log_note("Failed - attempting again, mounting %s as game directory", temp_path);
+      if (PHYSFS_mount(temp_path, "/", 1)) {
+        goto skip_fs_error;
+      }
+    }
+    s_throw(std::runtime_error, "PhysFS Error: %s", PHYSFS_getErrorByCode(code));
   }
+  skip_fs_error:
 
   // Mount any snowballs found as a result of mounting the read/write paths
   mount_snowballs();
 
 #define MOUNT_BASE_ALWAYS 0
 #if MOUNT_BASE_ALWAYS
-  const bool is_base = (game_dir == default_game_dir);
   if (!is_base) {
     // Mount base user directory as search path if it won't automagically be
     // handled below
@@ -180,19 +193,17 @@ void set_physfs_config()
     if (!PHYSFS_mount(temp_path, "/", 1)) {
       auto code = PHYSFS_getLastErrorCode();
       if (code != PHYSFS_ERR_NOT_FOUND) {
-        s_log_error("PhysFS Error: %s", PHYSFS_getErrorByCode(code));
-        throw std::runtime_error("Unable to mount user base directory, PhysicsFS init failed");
+        s_throw(std::runtime_error, "PhysFS Error: %s", PHYSFS_getErrorByCode(code));
       }
     }
 
-    sqlite3_snprintf(MAX_PATH_LEN, temp_path, "%s%s", pfs_base_dir, default_game_dir.c_str());
+    sqlite3_snprintf(MAX_PATH_LEN, temp_path, "%s%s%s", pfs_base_dir, base_suffix, default_game_dir.c_str());
     s_log_note("Mounting %s as base directory", temp_path);
     // Mount base/ directory
     if (!PHYSFS_mount(temp_path, "/", 1)) {
       auto code = PHYSFS_getLastErrorCode();
       if (code != PHYSFS_ERR_NOT_FOUND) {
-        s_log_error("PhysFS Error: %s", PHYSFS_getErrorByCode(code));
-        throw std::runtime_error("Unable to mount base directory, PhysicsFS init failed");
+        s_throw(std::runtime_error, "PhysFS Error: %s", PHYSFS_getErrorByCode(code));
       }
     }
 
@@ -207,8 +218,7 @@ void set_physfs_config()
 
 void glfw_error_callback(int error, const char *msg)
 {
-  s_log_error("GLFW Error [%d] %s", error, msg);
-  throw std::runtime_error("GLFW encountered an error");
+  s_throw(std::runtime_error, "GLFW Error [%d] %s", error, msg);
 }
 
 
@@ -229,7 +239,7 @@ void s_enet_free(void *m)
 
 void s_enet_no_memory()
 {
-  throw std::runtime_error("Unable to allocate memory for ENet");
+  s_throw(std::runtime_error, "Unable to allocate memory for ENet");
 }
 
 
@@ -251,7 +261,7 @@ void sys_init(int argc, const char **argv)
 
   s_log_note("Initializing SQLite3");
   if (sqlite3_initialize() != SQLITE_OK) {
-    throw std::runtime_error("Failed to initialize SQLite3");
+    s_throw(std::runtime_error, "Failed to initialize SQLite3");
   }
 
   // Initialize PhysFS
@@ -260,11 +270,11 @@ void sys_init(int argc, const char **argv)
     // fail
     PHYSFS_ErrorCode err = PHYSFS_getLastErrorCode();
     const char *err_str = PHYSFS_getErrorByCode(err);
-    throw std::runtime_error(err_str);
+    s_throw(std::runtime_error, "PhysFS Init Error: %s", err_str);
   }
 
   if (register_physfs_vfs(false) != SQLITE_OK) {
-    throw std::runtime_error("Failed to initialize SQLite3 PhysicsFS VFS");
+    s_throw(std::runtime_error, "Failed to initialize SQLite3 PhysicsFS VFS");
   }
 
   set_physfs_config();
@@ -278,14 +288,14 @@ void sys_init(int argc, const char **argv)
   g_enet_callbacks.free     = s_enet_free;
   g_enet_callbacks.no_memory = s_enet_no_memory;
   if (enet_initialize_with_callbacks(ENET_VERSION, &g_enet_callbacks)) {
-    throw std::runtime_error("Failed to initialize ENet");
+    s_throw(std::runtime_error, "Failed to initialize ENet");
   }
   s_log_note("ENet initialized");
 
   s_log_note("Initializing GLFW");
   glfwSetErrorCallback(glfw_error_callback);
   if (!glfwInit()) {
-    throw std::runtime_error("Failed to initialize GLFW");
+    s_throw(std::runtime_error, "Failed to initialize GLFW");
   }
   s_log_note("GLFW initialized");
 

@@ -20,7 +20,7 @@ const int SERVER_TIMEOUT = 2; // 1 second
 server_t &server_t::get_server(size_t server_num)
 {
   if (server_num != DEFAULT_SERVER_NUM)  {
-    throw std::out_of_range("Invalid server number");
+    s_throw(std::out_of_range, "Invalid server number");
   }
   return g_default_server;
 }
@@ -36,7 +36,7 @@ void server_t::initialize(int argc, const char **argv)
   host_ = enet_host_create(&host_addr, num_clients_, 2, 0, 0);
 
   if (host_ == NULL) {
-    throw std::runtime_error("Unable to create server host");
+    s_throw(std::runtime_error, "Unable to create server host");
   }
 
   async_thread(&server_t::run_frameloop, this);
@@ -46,12 +46,7 @@ void server_t::initialize(int argc, const char **argv)
 
 void server_t::run_frameloop()
 {
-  try {
-    frameloop();
-  } catch (std::exception &ex) {
-    s_log_error("Uncaught exception thrown during frameloop: %s", ex.what());
-  }
-
+  frameloop();
   shutdown();
 }
 

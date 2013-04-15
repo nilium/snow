@@ -33,7 +33,7 @@ rbuffer_t &rbuffer_t::operator = (rbuffer_t &&buf)
 {
   if (this != &buf) {
     if (&state_ != &buf.state_)
-      throw std::invalid_argument("Unable to move buffer: GL state objects differ");
+      s_throw(std::invalid_argument, "Unable to move buffer: GL state objects differ");
 
     if (valid() && generated())
       unload();
@@ -54,7 +54,7 @@ rbuffer_t &rbuffer_t::operator = (rbuffer_t &&buf)
 void rbuffer_t::resize(GLsizeiptr new_size, bool save_data)
 {
   if (!valid())
-    throw std::runtime_error("Called resize on invalid buffer");
+    s_throw(std::runtime_error, "Called resize on invalid buffer");
   else if (new_size < 1)
     unload();
   GLsizeiptr old_size = size_;
@@ -95,7 +95,7 @@ void rbuffer_t::resize(GLsizeiptr new_size, bool save_data)
 void rbuffer_t::set_usage(GLenum usage)
 {
   if (!valid())
-    throw std::runtime_error("Called set_usage on invalid buffer");
+    s_throw(std::runtime_error, "Called set_usage on invalid buffer");
   usage_ = usage;
   resize(size(), true);
 }
@@ -105,11 +105,11 @@ void rbuffer_t::set_usage(GLenum usage)
 void rbuffer_t::get_buffer(void *data, GLintptr offset, GLsizeiptr length)
 {
   if (!valid())
-    throw std::runtime_error("Called get_buffer on invalid buffer");
+    s_throw(std::runtime_error, "Called get_buffer on invalid buffer");
   else if (!data)
-    throw std::invalid_argument("get_buffer: data ptr is null");
+    s_throw(std::invalid_argument, "get_buffer: data ptr is null");
   else if (length <= 0)
-    throw std::invalid_argument("get_buffer: length is <= 0");
+    s_throw(std::invalid_argument, "get_buffer: length is <= 0");
 
   if (buffer_) {
     bind();
@@ -123,7 +123,7 @@ void rbuffer_t::get_buffer(void *data, GLintptr offset, GLsizeiptr length)
 void rbuffer_t::bind_as(GLenum alt_target)
 {
   if (!valid())
-    throw std::runtime_error("Called bind on invalid buffer");
+    s_throw(std::runtime_error, "Called bind on invalid buffer");
 
   if (!generated() && size_ > 0) {
     glGenBuffers(1, &buffer_);

@@ -38,7 +38,7 @@ struct database_t
   database_t(
     const string &path,
     bool throw_on_error = true,
-    int flags = SQLITE_OPEN_READWRITE,
+    int flags = SQLITE_OPEN_READONLY,
     const string &vfs = "");
   ~database_t();
 

@@ -42,7 +42,7 @@ int rmaterial_basic_t::passes() const
 void rmaterial_basic_t::prepare_pass(int pass)
 {
   if (pass != 0) {
-    throw std::invalid_argument("Invalid pass for basic material - pass must be 0");
+    s_throw(std::invalid_argument, "Invalid pass for basic material - pass must be 0");
   }
 
   if (valid()) {
@@ -65,7 +65,7 @@ void rmaterial_basic_t::prepare_pass(int pass)
       state_.bind_texture(GL_TEXTURE_2D, 0);
     }
   } else {
-    throw std::runtime_error("Material is invalid");
+    s_throw(std::runtime_error, "Material is invalid");
   }
 }
 

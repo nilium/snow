@@ -1,9 +1,60 @@
 #include "texture.hh"
 #include "gl_state.hh"
 #include "gl_error.hh"
+#include <physfs.h>
 
 
 namespace snow {
+
+
+namespace {
+
+
+int r_pfs_stb_read(void *user, char *data, int size)
+{
+  PHYSFS_File *file = (PHYSFS_File *)user;
+  auto result = PHYSFS_readBytes(file, data, (PHYSFS_uint64)size);
+  if (result < 0) {
+    s_log_error("Error reading from PhysFS using STBI callbacks: %s",
+      PHYSFS_getLastError());
+  }
+  return (int)result;
+}
+
+
+
+void r_pfs_stb_skip(void *user, unsigned numbytes)
+{
+  PHYSFS_File *file = (PHYSFS_File *)user;
+  auto rtell = PHYSFS_tell(file);
+  if (rtell < 0 || !PHYSFS_seek(file, rtell + numbytes)) {
+    s_log_error("Failed to seek in PhysFS file: %s",
+      PHYSFS_getLastError());
+  }
+}
+
+
+
+int r_pfs_stb_eof(void *user)
+{
+  PHYSFS_File *file = (PHYSFS_File *)user;
+  return PHYSFS_eof(file);
+}
+
+
+
+stbi_io_callbacks &r_pfs_stb_io_callbacks()
+{
+  static stbi_io_callbacks stb_pfs_io = {
+    r_pfs_stb_read,
+    r_pfs_stb_skip,
+    r_pfs_stb_eof
+  };
+  return stb_pfs_io;
+}
+
+
+} // namespace <anon>
 
 
 rtexture_t::rtexture_t(gl_state_t &state, GLenum target) :
@@ -29,7 +80,7 @@ rtexture_t &rtexture_t::operator = (rtexture_t &&other)
 {
   if (&other != this) {
     if (!gl_state_t::compatible(state_, other)) {
-      throw std::invalid_argument("Cannot move texture: GL states are incompatible");
+      s_throw(std::invalid_argument, "Cannot move texture: GL states are incompatible");
     }
     name_ = other.name_;
     target_ = other.target_;
@@ -219,6 +270,78 @@ void rtexture_t::zero()
 {
   name_ = 0;
   target_ = 0;
+}
+
+
+
+rtexture_t load_texture_2d(gl_state_t &gl, const string &path,
+  bool gen_mipmaps, texture_components_t required_components)
+{
+
+  PHYSFS_File *file = PHYSFS_openRead(path.c_str());
+  if (file == NULL) {
+    s_log_error("Unable to open file for reading: %s", path.c_str());
+    s_throw(std::invalid_argument, "Unable to open texture file");
+  }
+
+  int width = 0;
+  int height = 0;
+  int actual_components = 0;
+  stbi_uc *data = stbi_load_from_callbacks(&r_pfs_stb_io_callbacks(), file,
+    &width, &height, &actual_components, required_components);
+
+  PHYSFS_close(file);
+
+  if (data == NULL) {
+    s_log_error("Unable to read image %s: %s",
+      path.c_str(), stbi_failure_reason());
+    s_throw(std::runtime_error, "Could not load texture file - image isn't valid");
+  } else if (required_components != TEX_COMP_DEFAULT &&
+    required_components != actual_components) {
+    stbi_image_free(data);
+    s_log_error("Required components (%d) != actual components (%d) for %s",
+      required_components, actual_components, path.c_str());
+    s_throw(std::runtime_error, "Required components != actual components");
+  }
+
+  GLint internal_format = GL_RGBA;
+  switch (actual_components) {
+    case TEX_COMP_GREY:       internal_format = GL_RED; break;
+    case TEX_COMP_GREY_ALPHA: internal_format = GL_RG;  break;
+    case TEX_COMP_RGB:        internal_format = GL_RGB; break;
+    case TEX_COMP_RGBA:       // default: GL_RGBA
+    default: break;
+  }
+
+  if (!gl.can_create_texture(0, internal_format, width, height)) {
+    stbi_image_free(data);
+    s_throw(std::runtime_error, "GL cannot create a texture for this image");
+  }
+
+  rtexture_t tex(gl, GL_TEXTURE_2D);
+  tex.bind();
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  assert_gl("Setting GL_TEXTURE_WRAP_S");
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  assert_gl("Setting GL_TEXTURE_WRAP_T");
+
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  assert_gl("Setting GL_TEXTURE_MIN_FILTER");
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  assert_gl("Setting GL_TEXTURE_MAG_FILTER");
+
+  tex.tex_image_2d(0, internal_format, width, height, internal_format,
+    GL_UNSIGNED_BYTE, data);
+
+  if (gen_mipmaps) {
+    glGenerateMipmap(GL_TEXTURE_2D);
+    assert_gl("Generating mipmaps");
+  }
+
+  stbi_image_free(data);
+
+  return tex;
 }
 
 

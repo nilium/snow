@@ -1,7 +1,7 @@
 #ifndef __SNOW__MATERIAL_SINGLE_HH__
 #define __SNOW__MATERIAL_SINGLE_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 #include <snow/math/math3d.hh>
 
 #include "sgl.hh"

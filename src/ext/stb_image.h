@@ -183,6 +183,8 @@
 // The three functions you must define are "read" (reads some bytes of data),
 // "skip" (skips some bytes of data), "eof" (reports if the stream is at the end).
 
+#define STBI_NO_STDIO
+#define STBI_NO_HDR
 
 #ifndef STBI_NO_STDIO
 

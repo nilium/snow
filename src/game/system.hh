@@ -1,7 +1,7 @@
 #ifndef __SNOW__SYSTEM_HH__
 #define __SNOW__SYSTEM_HH__
 
-#include <snow/config.hh>
+#include "../config.hh"
 
 
 namespace snow {
@@ -40,7 +40,7 @@ struct system_t
   ============================================================================*/
   virtual bool event(const event_t &event);
 
-  /*==============================================================================
+  /*============================================================================
     frame(step)
 
       Performs a single frame's logic for the given timestep. In most cases,
@@ -50,8 +50,15 @@ struct system_t
       accidentally create
 
       Default implementation does nothing.
-  ==============================================================================*/
+  ============================================================================*/
   virtual void frame(double step, double timeslice);
+
+  /*============================================================================
+    FunctionName
+
+      Description
+  ============================================================================*/
+  virtual void draw(double timeslice);
 
 private:
   bool active_ = true;

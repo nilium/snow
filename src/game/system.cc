@@ -30,4 +30,11 @@ void system_t::frame(double step, double timeslice)
 }
 
 
+
+void system_t::draw(double timeslice)
+{
+  // NOP
+}
+
+
 } // namespace snow
