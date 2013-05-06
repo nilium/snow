@@ -1,7 +1,6 @@
 #include "draw_2d.hh"
 #include "buffer.hh"
 #include "gl_error.hh"
-#include "gl_state.hh"
 #include "material.hh"
 #include "vertex_array.hh"
 #include <cstring>
@@ -15,8 +14,7 @@ constexpr size_t DEFAULT_VERTEX_CAPACITY = DEFAULT_FACE_CAPACITY * 2;
 
 
 
-rdraw_2d_t::rdraw_2d_t(gl_state_t &gl)
-: state_(gl),
+rdraw_2d_t::rdraw_2d_t() :
   transform_(mat3f_t::identity),
   scale_(vec2f_t::one),
   origin_(vec2f_t::zero),
@@ -35,7 +33,6 @@ rdraw_2d_t::rdraw_2d_t(gl_state_t &gl)
 
 
 rdraw_2d_t::rdraw_2d_t(rdraw_2d_t &&other) :
-  state_(other.state_),
   transform_(other.transform_),
   scale_(other.scale_),
   origin_(other.origin_),
@@ -74,10 +71,6 @@ rdraw_2d_t &rdraw_2d_t::operator = (const rdraw_2d_t &other)
 rdraw_2d_t &rdraw_2d_t::operator = (rdraw_2d_t &&other)
 {
   if (&other != this) {
-    if (!gl_state_t::compatible(*this, other)) {
-      s_throw(std::invalid_argument, "Cannot move 2D drawer: GL states are incompatible");
-    }
-
     transform_ = other.transform_;
     scale_ = other.scale_;
     origin_ = other.origin_;
@@ -124,10 +117,12 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices
 
     if (cur_material != current.material) {
       cur_material = current.material;
-      if (!cur_material)
-        s_throw(std::runtime_error, "Material is null");
       cur_material->set_modelview(mat4f_t::identity);
       set_proj = true;
+    }
+
+    if (!cur_material) {
+      s_throw(std::runtime_error, "Material is null");
     }
 
     if (set_proj) {
@@ -145,7 +140,7 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices
     }
   }
 
-  state_.bind_vertex_array(0);
+  glBindVertexArray(0);
 }
 
 
@@ -187,21 +182,18 @@ void rdraw_2d_t::buffer_indices(rbuffer_t &buffer, GLintptr ib_where)
 
 rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
   const GLuint tex_attrib, const GLuint col_attrib, rbuffer_t &vertices,
-  const GLintptr vb_where, const bool restore_vao)
+  const GLintptr vb_where)
 {
-  // Make sure GL states are compatible
-  rvertex_array_t vao(state_);
+  rvertex_array_t vao;
 
   // Build vao without initializer
-  auto previous_vao = (restore_vao ? state_.vertex_array() : 0);
   vao.bind();
   vertices.bind();
 
   // Enable attribute arrays
-  state_.set_attrib_array_enabled(pos_attrib, true);
-  state_.set_attrib_array_enabled(col_attrib, true);
-  state_.set_attrib_array_enabled(tex_attrib, true);
-
+  glEnableVertexAttribArray(pos_attrib);
+  glEnableVertexAttribArray(col_attrib);
+  glEnableVertexAttribArray(tex_attrib);
 
   // Bind vertex attributes to buffer offsets
   glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
@@ -213,10 +205,6 @@ rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
   glVertexAttribPointer(col_attrib, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t),
     (const GLvoid *)(vb_where + offsetof(vertex_t, color)));
   assert_gl("Setting vertex color attrib");
-
-  // reset VAO binding
-  if (restore_vao)
-    state_.bind_vertex_array(previous_vao);
 
   return vao;
 }
@@ -406,6 +394,14 @@ void rdraw_2d_t::draw_triangles(
     face.v2 += base_vertex;
     faces_.push_back(face);
   }
+}
+
+
+
+void rdraw_2d_t::draw_triangle(const vertex_t vertices[3], rmaterial_t *const material)
+{
+  static const face_t face = { 0, 1, 2 };
+  draw_triangles(vertices, 3, &face, 1, material);
 }
 
 

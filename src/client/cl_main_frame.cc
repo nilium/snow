@@ -22,9 +22,16 @@ namespace snow {
 namespace {
 
 
-cvar_t cl_willQuit ( "cl_willQuit",  0, CVAR_READ_ONLY | CVAR_DELAYED );
-cvar_t wnd_focused ( "wnd_focused",  1, CVAR_READ_ONLY | CVAR_DELAYED );
-cvar_t r_drawFrame ( "r_drawFrame",  1, CVAR_READ_ONLY | CVAR_DELAYED );
+
+static void cl_log_callback(const char *msg, size_t len, void *ctx)
+{
+  console_pane_t *console = (console_pane_t *)ctx;
+  if (!ctx) {
+    return;
+  }
+  console->write_log(string(msg, len));
+}
+
 
 
 enum : int {
@@ -33,11 +40,18 @@ enum : int {
 };
 
 
+
 struct esc_system_t : system_t
 {
+  esc_system_t(cvar_t *willQuit) :
+    cl_willQuit_(willQuit)
+  {
+    // nop
+  }
+
   virtual bool event(const event_t &event)
   {
-    if (event.kind == KEY_EVENT && event.key.button == GLFW_KEY_ESC) {
+    if (event.kind == KEY_EVENT && event.key.button == GLFW_KEY_PAUSE) {
       will_quit_ = true;
       return true;
     } else if (event.kind == NET_EVENT) {
@@ -53,11 +67,12 @@ struct esc_system_t : system_t
   {
     if (will_quit_) {
       s_log_note("Should quit");
-      cl_willQuit.seti(1);
+      cl_willQuit_->seti(1);
     }
   }
 
 private:
+  cvar_t *cl_willQuit_ = nullptr;
   bool will_quit_ = false;
 };
 
@@ -76,7 +91,7 @@ const std::chrono::milliseconds &cl_frameloop_sleep_duration()
 
 
 
-rshader_t load_shader(gl_state_t &gl, GLenum kind, const string &path)
+rshader_t load_shader(GLenum kind, const string &path)
 {
   auto file = PHYSFS_openRead(path.c_str());
   if (!file) {
@@ -88,7 +103,7 @@ rshader_t load_shader(gl_state_t &gl, GLenum kind, const string &path)
   PHYSFS_readBytes(file, filebuf.data(), size);
   PHYSFS_close(file);
 
-  rshader_t shader(gl, kind);
+  rshader_t shader(kind);
   shader.load_source(string(filebuf.data(), filebuf.size()));
 
   if (!shader.compile()) {
@@ -145,6 +160,7 @@ void cl_poll_events(void *ctx)
     Reads events from the server or other connections and inserts them into the
     event queue.
 ==============================================================================*/
+#if USE_SERVER
 void client_t::pump_netevents(double timeslice)
 {
   #define NET_TIMEOUT 1
@@ -154,7 +170,7 @@ void client_t::pump_netevents(double timeslice)
   while ((error = enet_host_service(host_, &event, NET_TIMEOUT)) > 0) {
     if (event.type == ENET_EVENT_TYPE_RECEIVE) {
       if (event.packet) {
-        const auto index = netevent_pool_.reserve();
+        const auto index = netevent_pool_.allocate();
         netevent_t &netevent = netevent_pool_[index];
         netevent.read_from(event.packet);
         enet_packet_destroy(event.packet);
@@ -175,6 +191,7 @@ void client_t::pump_netevents(double timeslice)
     s_log_error("Error checking for ENet events: %d", error);
   }
 }
+#endif
 
 
 
@@ -190,48 +207,52 @@ void client_t::pump_netevents(double timeslice)
 ==============================================================================*/
 void client_t::read_events(double timeslice)
 {
+#ifndef NDEBUG
   #define LONG_INPUT_TIME (0.004) /* 4 milliseconds */
-
   double input_time = glfwGetTime();
+#endif
+
+  event_queue_.set_frame_time(sim_time_);
+
+#if USE_SERVER
   // Read network events
   if (is_connected()) {
-    dispatch_group_async_s(input_group_, frame_queue_, [this, timeslice] {
-      pump_netevents(timeslice);
-    });
-
-    // Read user input
-    dispatch_group_async_f(input_group_, cl_main_queue(), NULL, cl_poll_events);
-    // Allow the group to take up to 4 milliseconds to poll for events before
-    // it just goes ahead
-    dispatch_group_wait(input_group_, DISPATCH_TIME_FOREVER);
-  } else {
-    dispatch_sync_f(cl_main_queue(), NULL, cl_poll_events);
+    pump_netevents(timeslice);
   }
+#endif
 
+  glfwPollEvents();
+
+#ifndef NDEBUG
   input_time = glfwGetTime() - input_time;
   if (input_time > LONG_INPUT_TIME) {
     s_log_warning("Input queue is taking a long time: %f", input_time);
   }
+#endif
 
   // And run through events
   event_t event;
   auto sys_end = systems_.cend();
   auto sys_begin = systems_.cbegin();
-  while (event_queue_.poll_event_before(event, base_time_ + timeslice)) {
+  while (event_queue_.poll_event(event)) {
+    switch (event.kind) {
+      case WINDOW_FOCUS_EVENT: {
+        wnd_focused->seti(event.focused);
+        continue;
+      }
 
-    if (event.kind == WINDOW_FOCUS_EVENT) {
-      wnd_focused.seti(event.focused);
-      continue;
-    }
-
-    auto sys_iter = sys_begin;
-    event.time -= base_time_;
-    while (sys_iter != sys_end) {
-      system_t *sys = sys_iter->second;
-      if (sys->active() && !sys->event(event)) {
+      default: {
+        auto sys_iter = sys_begin;
+        event.time -= base_time_;
+        while (sys_iter != sys_end) {
+          system_t *sys = sys_iter->second;
+          if (sys->active() && !sys->event(event)) {
+            break;
+          }
+          ++sys_iter;
+        }
         break;
       }
-      ++sys_iter;
     }
   }
 }
@@ -266,15 +287,8 @@ void client_t::do_frame(double step, double timeslice)
 ==============================================================================*/
 void client_t::run_frameloop()
 {
-  esc_system_t debug_sys;
-  add_system(&debug_sys);
-
   frameloop();
-
-  remove_system(&debug_sys);
-
-  // Go back to the main thread and kill the program cleanly.
-  dispatch_async_s(cl_main_queue(), [this] { terminate(); });
+  terminate();
 }
 
 
@@ -287,19 +301,27 @@ void client_t::run_frameloop()
 ==============================================================================*/
 void client_t::frameloop()
 {
-  cvars_.clear();
-  cvars_.register_cvar(&cl_willQuit);
-  cvars_.register_cvar(&r_drawFrame);
-
   console_pane_t &console = default_console();
+  s_set_log_callback(cl_log_callback, &console);
+
+  cvars_.clear();
+
+  cvars_.register_ccmd(&cmd_quit_);
+  cl_willQuit = cvars_.get_cvar( "cl_willQuit", 0, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
+  wnd_focused = cvars_.get_cvar( "wnd_focused", 1, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
+  wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", false, CVAR_DELAYED | CVAR_INVISIBLE);
+  r_drawFrame = cvars_.get_cvar( "r_drawFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
+
+  esc_system_t debug_sys(cl_willQuit);
+  add_system(&debug_sys);
+
   console.set_cvar_set(&cvars_);
 
   auto window = window_;
-  gl_state_t &gl = state_;
+  glfwShowWindow(window);
 
   glfwMakeContextCurrent(window);
   glfwSwapInterval(0);    // Don't needlessly limit rendering speed
-  gl.acquire();
 
   // Set this to true before getting the base time since it might loop a couple
   // times setting it.
@@ -311,34 +333,28 @@ void client_t::frameloop()
   unsigned frame, last_frame;
   frame = 1; last_frame = 0;
 
-  rdraw_2d_t drawer(gl);
-  rbuffer_t indices(gl, GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 2048);
-  rbuffer_t vertices(gl, GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 4096);
-  rvertex_array_t vao = drawer.build_vertex_array(0, 1, 2, vertices, 0, true);
-  rprogram_t prog(gl);
-  build_program(prog,
-    load_shader(gl, GL_VERTEX_SHADER, "basic.vsh"),
-    load_shader(gl, GL_FRAGMENT_SHADER, "basic.fsh"));
+  rdraw_2d_t drawer;
+  rbuffer_t indices(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 2048);
+  rbuffer_t vertices(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 4096);
+  rvertex_array_t vao = drawer.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vertices, 0);
 
-  database_t fontdb = database_t::read_physfs("console_font.db");
-  rfont_t font(fontdb, "PragmataPro");
-  fontdb.close();
-  rtexture_t tex = load_texture_2d(gl, "console_font.png", true, TEX_COMP_RGBA);
-  rmaterial_basic_t mat(gl);
-  mat.set_program(&prog, 0, 1, 2);
-  mat.set_texture(&tex);
-  font.set_font_page(0, &mat);
-  console.set_font(&font);
+  rfont_t *font = res_.load_font("console");
+  assert(font);
+  rmaterial_basic_t *mat = (rmaterial_basic_t *)res_.load_material("ui/console_font");
+  rmaterial_basic_t *bgmat = (rmaterial_basic_t *)res_.load_material("ui/console_back");
+  font->set_font_page(0, mat);
+  console.set_font(font);
+  console.set_background(bgmat);
   console.set_drawer(&drawer);
-  console.set_background(&mat);
 
   add_system(&console);
 
   glClearColor(0.5, 0.5, 0.5, 1.0);
   glEnable(GL_BLEND);
-  gl.set_blend_func(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   while (running_.load()) {
+    int mousemode = -1;
 
     // Do any frames that would have passed since the last rendering point
     const double cur_time = glfwGetTime() - base_time_;
@@ -347,11 +363,22 @@ void client_t::frameloop()
       ++frame;
       read_events(sim_time_);
       do_frame(FRAME_SEQ_TIME, sim_time_);
+
+      if (wnd_mouseMode->has_flags(CVAR_MODIFIED)) {
+        wnd_mouseMode->update();
+        mousemode = wnd_mouseMode->geti();
+      }
+
       cvars_.update_cvars();
     }
 
+    switch (mousemode) {
+    case 0: glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN); break;
+    case 1: glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL); break;
+    default: break;
+    }
 
-    if (frame != last_frame && r_drawFrame.geti()) {
+    if (frame != last_frame && r_drawFrame->geti()) {
       last_frame = frame;
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
       assert_gl("Clearing buffers");
@@ -362,7 +389,6 @@ void client_t::frameloop()
         }
       }
 
-      font.draw_text(drawer, { 200, 200 }, "foobar");
       drawer.buffer_vertices(vertices, 0);
       drawer.buffer_indices(indices, 0);
       drawer.draw_with_vertex_array(vao, indices, 0);
@@ -372,12 +398,15 @@ void client_t::frameloop()
       drawer.clear();
     }
 
-    if (cl_willQuit.geti()) {
+    if (cl_willQuit->geti()) {
       running_ = false;
-    } else if (!wnd_focused.geti()) {
+    } else if (!wnd_focused->geti()) {
       std::this_thread::sleep_for(cl_frameloop_sleep_duration());
     }
   } // while (running)
+
+  res_.release_all();
+  s_set_log_callback(nullptr, nullptr);
 
   glfwMakeContextCurrent(NULL);
 } // frameloop

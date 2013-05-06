@@ -23,7 +23,7 @@ struct S_EXPORT rbuffer_t
   * generated as a buffer of the specified size with no contents.
   *****************************************************************************/
 
-  rbuffer_t(gl_state_t &state, unsigned target, GLenum usage, GLsizeiptr size);
+  rbuffer_t(unsigned target, GLenum usage, GLsizeiptr size);
   ~rbuffer_t();
 
   // If moved, the new buffer will delete its current buffer (meaning the name
@@ -90,7 +90,6 @@ protected:
   S_HIDDEN
   void          zero();
 
-  gl_state_t &state_;
   GLsizeiptr size_;
   unsigned target_;
   GLuint buffer_;

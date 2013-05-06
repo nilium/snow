@@ -29,7 +29,7 @@
 #ifndef __SNOW__SPOOKY_HH__
 #define __SNOW__SPOOKY_HH__
 
-#include <stddef.h>
+#include <cstddef>
 
 #ifdef _MSC_VER
 # define INLINE __forceinline
@@ -38,7 +38,7 @@
   typedef  unsigned __int16 uint16;
   typedef  unsigned __int8  uint8;
 #else
-# include <stdint.h>
+# include <cstdint>
 # define INLINE inline
   typedef  uint64_t  uint64;
   typedef  uint32_t  uint32;

@@ -38,8 +38,8 @@ string get_program_info_log(GLuint program)
 
     Description
 ==============================================================================*/
-rprogram_t::rprogram_t(gl_state_t &state)
-: state_(state), program_(glCreateProgram()), linked_(false)
+rprogram_t::rprogram_t()
+: program_(glCreateProgram()), linked_(false)
 {
 }
 
@@ -64,7 +64,7 @@ rprogram_t::~rprogram_t()
     Description
 ==============================================================================*/
 rprogram_t::rprogram_t(rprogram_t &&program)
-: state_(program.state_), program_(program.program_), linked_(program.linked_),
+: program_(program.program_), linked_(program.linked_),
   uniforms_(std::move(program.uniforms_)), names_(std::move(program.names_)),
   error_str_(std::move(program.error_str_))
 {
@@ -81,10 +81,6 @@ rprogram_t::rprogram_t(rprogram_t &&program)
 rprogram_t &rprogram_t::operator = (rprogram_t &&program)
 {
   if (this != &program) {
-    if (&state_ != &program.state_)
-      s_throw(std::invalid_argument, "Unable to move program: "
-                                  "GL state objects differ");
-
     unload();
 
     program_ = program.program_;
@@ -111,7 +107,7 @@ void rprogram_t::use()
   if (!usable())
     s_throw(std::runtime_error, "Shader program is not in a usable state");
 
-  state_.use_program(program_);
+  glUseProgram(program_);
 }
 
 

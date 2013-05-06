@@ -10,6 +10,7 @@ namespace snow {
 
 
 struct cvar_set_t;
+struct cvar_t;
 struct rdraw_2d_t;
 struct rfont_t;
 struct rmaterial_t;
@@ -38,11 +39,13 @@ struct console_pane_t : public system_t
 private:
   unsigned            top_      = 0;
   unsigned            log_max_  = 100;
+  float               font_scale_ = 1.0f; // set by set_font
   bool                open_     = false;
   rmaterial_t *       bg_mat_   = nullptr;
   rdraw_2d_t *        drawer_   = nullptr;
   rfont_t *           font_     = nullptr;
   cvar_set_t *        cvars_    = nullptr;
+  cvar_t *            wnd_mouseMode = nullptr;
   string              buffer_;
   std::deque<string>  log_;
 };

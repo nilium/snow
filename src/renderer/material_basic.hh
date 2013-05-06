@@ -22,7 +22,7 @@ struct rmaterial_basic_t : public rmaterial_t
   friend struct gl_state_t;
 
 
-  rmaterial_basic_t(gl_state_t &gl);
+  rmaterial_basic_t();
   virtual ~rmaterial_basic_t();
 
   virtual bool valid() const;
@@ -31,6 +31,7 @@ struct rmaterial_basic_t : public rmaterial_t
 
   virtual void prepare_pass(int pass);
 
+  virtual rprogram_t *program() const;
   virtual void set_program(rprogram_t *program,
                            const string &projection_name = "projection",
                            const string &modelview_name = "modelview",
@@ -42,6 +43,7 @@ struct rmaterial_basic_t : public rmaterial_t
   virtual void set_projection(const mat4f_t &proj);
   virtual void set_modelview(const mat4f_t &mv);
 
+  virtual rtexture_t *texture() const;
   virtual void set_texture(rtexture_t *texture);
 
 private:

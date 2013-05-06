@@ -7,15 +7,11 @@
 namespace snow {
 
 
-struct gl_state_t;
-
-
 struct S_EXPORT rshader_t
 {
   friend struct rprogram_t;
-  friend struct gl_state_t;
 
-  rshader_t(gl_state_t &state, GLenum kind);
+  rshader_t(GLenum kind);
   rshader_t(rshader_t &&other);
   rshader_t &operator = (rshader_t &&other);
   ~rshader_t();
@@ -27,6 +23,7 @@ struct S_EXPORT rshader_t
 
   // Sets the source code string for the shader.
   void load_source(const string &source);
+  void load_source(const char *source, GLint length);
   // Returns true if compilation succeeded, false if there was an error.
   // Check error_string if there's an error.
   bool compile();
@@ -37,13 +34,12 @@ struct S_EXPORT rshader_t
 
   void unload();
 
-  inline bool has_error() const { return error_str_.length() != 0; }
+  inline bool has_error() const { return error_str_.size() != 0; }
   inline string error_string() const { return error_str_; }
 
 private:
   S_HIDDEN void zero();
 
-  gl_state_t &state_;
   GLenum kind_;
   GLuint shader_;
   bool compiled_;

@@ -57,8 +57,7 @@ stbi_io_callbacks &r_pfs_stb_io_callbacks()
 } // namespace <anon>
 
 
-rtexture_t::rtexture_t(gl_state_t &state, GLenum target) :
-  state_(state),
+rtexture_t::rtexture_t(GLenum target) :
   name_(0),
   target_(target)
 {
@@ -66,8 +65,15 @@ rtexture_t::rtexture_t(gl_state_t &state, GLenum target) :
 
 
 
+rtexture_t::rtexture_t() :
+  name_(0),
+  target_(GL_TEXTURE_2D)
+{
+}
+
+
+
 rtexture_t::rtexture_t(rtexture_t &&other) :
-  state_(other.state_),
   name_(other.name_),
   target_(other.target_)
 {
@@ -79,9 +85,6 @@ rtexture_t::rtexture_t(rtexture_t &&other) :
 rtexture_t &rtexture_t::operator = (rtexture_t &&other)
 {
   if (&other != this) {
-    if (!gl_state_t::compatible(state_, other)) {
-      s_throw(std::invalid_argument, "Cannot move texture: GL states are incompatible");
-    }
     name_ = other.name_;
     target_ = other.target_;
     other.zero();
@@ -104,7 +107,7 @@ void rtexture_t::bind()
     assert_gl("Generating texture object");
   }
 
-  state_.bind_texture(target_, name_);
+  glBindTexture(target_, name_);
 }
 
 
@@ -269,19 +272,19 @@ void rtexture_t::unload()
 void rtexture_t::zero()
 {
   name_ = 0;
-  target_ = 0;
+  target_ = GL_TEXTURE_2D;
 }
 
 
 
-rtexture_t load_texture_2d(gl_state_t &gl, const string &path,
+bool load_texture_2d(const string &path, rtexture_t &tex,
   bool gen_mipmaps, texture_components_t required_components)
 {
 
   PHYSFS_File *file = PHYSFS_openRead(path.c_str());
   if (file == NULL) {
     s_log_error("Unable to open file for reading: %s", path.c_str());
-    s_throw(std::invalid_argument, "Unable to open texture file");
+    return false;
   }
 
   int width = 0;
@@ -295,13 +298,11 @@ rtexture_t load_texture_2d(gl_state_t &gl, const string &path,
   if (data == NULL) {
     s_log_error("Unable to read image %s: %s",
       path.c_str(), stbi_failure_reason());
-    s_throw(std::runtime_error, "Could not load texture file - image isn't valid");
+    return false;
   } else if (required_components != TEX_COMP_DEFAULT &&
-    required_components != actual_components) {
-    stbi_image_free(data);
-    s_log_error("Required components (%d) != actual components (%d) for %s",
+             required_components != actual_components) {
+    s_log_warning("Required components (%d) != actual components (%d) for %s",
       required_components, actual_components, path.c_str());
-    s_throw(std::runtime_error, "Required components != actual components");
   }
 
   GLint internal_format = GL_RGBA;
@@ -313,12 +314,13 @@ rtexture_t load_texture_2d(gl_state_t &gl, const string &path,
     default: break;
   }
 
-  if (!gl.can_create_texture(0, internal_format, width, height)) {
+  if (!gl_state_t::can_create_texture(0, internal_format, width, height)) {
     stbi_image_free(data);
-    s_throw(std::runtime_error, "GL cannot create a texture for this image");
+    s_log_error("GL cannot create a texture for this image");
+    return false;
   }
 
-  rtexture_t tex(gl, GL_TEXTURE_2D);
+  tex.set_target(GL_TEXTURE_2D);
   tex.bind();
 
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -326,7 +328,10 @@ rtexture_t load_texture_2d(gl_state_t &gl, const string &path,
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
   assert_gl("Setting GL_TEXTURE_WRAP_T");
 
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  if (gen_mipmaps)
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  else
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
   assert_gl("Setting GL_TEXTURE_MIN_FILTER");
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   assert_gl("Setting GL_TEXTURE_MAG_FILTER");
@@ -341,7 +346,7 @@ rtexture_t load_texture_2d(gl_state_t &gl, const string &path,
 
   stbi_image_free(data);
 
-  return tex;
+  return true;
 }
 
 

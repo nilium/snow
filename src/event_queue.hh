@@ -6,9 +6,10 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <tbb/mutex.h>
 
 #include "config.hh"
-#include <snow/types/types_2d.hh>
+#include <snow/math/vec2.hh>
 #include "renderer/sgl.hh"
 
 
@@ -93,13 +94,13 @@ struct S_EXPORT event_t
     button_event_t key;             // KEY_EVENT
     int            character;       // CHAR_EVENT
     button_event_t mouse;           // MOUSE_EVENT
-    pointi_t       mouse_pos;       // MOUSE_MOVE_EVENT
-    pointd_t       scroll;          // MOUSE_SCROLL_EVENT
+    vec2d_t        mouse_pos;       // MOUSE_MOVE_EVENT
+    vec2d_t        scroll;          // MOUSE_SCROLL_EVENT
     bool           entered;         // MOUSE_ENTER_EVENT
     bool           focused;         // WINDOW_FOCUS_EVENT
     bool           iconified;       // WINDOW_ICONIFY_EVENT
-    dimensi_t      window_size;     // WINDOW_SIZE_EVENT
-    pointi_t       window_pos;      // WINDOW_MOVE_EVENT
+    vec2_t<int>    window_size;     // WINDOW_SIZE_EVENT
+    vec2_t<int>    window_pos;      // WINDOW_MOVE_EVENT
     void *         opaque;          // OPAQUE_EVENT
     netevent_t *   net;
   };
@@ -184,11 +185,12 @@ struct S_EXPORT event_queue_t
 {
   using event_list_t = std::list<event_t>;
 
-  // bool          wait_event(event_t &out, dispatch_time_t timeout = DISPATCH_TIME_FOREVER);
   bool          peek_event(event_t &out) const;
   bool          poll_event(event_t &out);
   bool          poll_event_before(event_t &out, double time);
   void          emit_event(const event_t &event);
+  void          set_frame_time(double time);
+  void          clear();
 
   // Get a copy of the event queue
   event_list_t  event_queue() const;
@@ -196,9 +198,25 @@ struct S_EXPORT event_queue_t
   void          set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
 
 private:
-  mutable std::mutex lock_;
+
+  static void   ecb_key_event(GLFWwindow *window, int key, int action);
+  static void   ecb_mouse_event(GLFWwindow *window, int button, int action);
+  static void   ecb_char_event(GLFWwindow *window, unsigned int character);
+  static void   ecb_mouse_pos_event(GLFWwindow *window, double x, double y);
+  static void   ecb_mouse_scroll_event(GLFWwindow *window, double x, double y);
+  static void   ecb_mouse_enter_event(GLFWwindow *window, int entered);
+  static void   ecb_window_close_event(GLFWwindow *window);
+  static void   ecb_window_move_event(GLFWwindow *window, int x, int y);
+  static void   ecb_window_size_event(GLFWwindow *window, int width, int height);
+  static void   ecb_window_focus_event(GLFWwindow *window, int focused);
+  static void   ecb_window_iconify_event(GLFWwindow *window, int iconified);
+
+#if USE_LOCKED_EVENT_QUEUE
+  mutable tbb::mutex lock_;
+#endif
   event_list_t      events_;
   double            last_time_ = 0;
+  double            frame_time_ = 0;
   event_list_t::const_iterator last_event_;
 };
 

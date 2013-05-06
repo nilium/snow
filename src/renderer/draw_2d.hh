@@ -10,7 +10,6 @@
 namespace snow {
 
 
-struct gl_state_t;
 struct rbuffer_t;
 struct rmaterial_t;
 struct rvertex_array_t;
@@ -18,8 +17,6 @@ struct rvertex_array_t;
 
 struct rdraw_2d_t
 {
-  friend gl_state_t;
-
   struct alignas(uint16_t) face_t
   {
     uint16_t v0, v1, v2;
@@ -34,7 +31,7 @@ struct rdraw_2d_t
 
 
 
-  rdraw_2d_t(gl_state_t &state);
+  rdraw_2d_t();
   ~rdraw_2d_t() = default;
 
   rdraw_2d_t(const rdraw_2d_t &other) = default;
@@ -57,14 +54,12 @@ struct rdraw_2d_t
   /*
     Builds a vertex array object with the 2D drawing's data and returns it.
     If either buffer cannot contain its respective data given the offset, the
-    buffer will be resized to at least fit it exactly.
-    If restore_vao is true and there was a VAO bound prior to calling this
-    method, it will be restored. If not, the new VAO will remain bound after
-    the call ends.
+    buffer will be resized to at least fit it exactly. The returned VAO will
+    already be bound.
   */
   rvertex_array_t build_vertex_array(const GLuint pos_attrib,
     const GLuint tex_attrib, const GLuint col_attrib, rbuffer_t &vertices,
-    const GLintptr vb_where, const bool restore_vao = false);
+    const GLintptr vb_where);
 
   GLsizeiptr vertex_buffer_size() const;
   GLsizeiptr index_buffer_size() const;
@@ -112,6 +107,8 @@ struct rdraw_2d_t
                       const face_t *const tris, const GLsizeiptr num_tris,
                       rmaterial_t *const material);
 
+  void draw_triangle(const vertex_t vertices[3], rmaterial_t *const material);
+
 
 /*******************************************************************************
 *                                   2D state                                   *
@@ -146,12 +143,13 @@ private:
     rmaterial_t *   material;    // may not be nullptr
     GLint           base_index;
     GLint           base_vertex; // = vertices_.size() pre-insert
-    vec2_t<uint16_t> screen_size;
+    vec2f_t         screen_size;
     // must be able to check for num_vertices + N > UINT16_MAX
     uint32_t        num_vertices;
     // keep in mind, three per face
     uint32_t        num_indices;
   };
+
 
   // Check that vertex components are packed
   static_assert(offsetof(vertex_t, position) + sizeof(vertex_t::position)
@@ -171,7 +169,6 @@ private:
   const mat3f_t &vertex_transform();
 
 
-  gl_state_t &        state_;
   mat3f_t             transform_;
   vec2f_t             scale_;
   vec2f_t             origin_;

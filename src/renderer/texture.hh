@@ -9,15 +9,10 @@
 namespace snow {
 
 
-struct gl_state_t;
-
-
 struct rtexture_t
 {
-  friend struct gl_state_t;
-
-
-  rtexture_t(gl_state_t &gl, GLenum target);
+  rtexture_t(); // target = GL_TEXTURE_2D
+  rtexture_t(GLenum target);
 
   rtexture_t(rtexture_t &&other);
   rtexture_t &operator = (rtexture_t &&other);
@@ -76,7 +71,6 @@ struct rtexture_t
 private:
   void zero();
 
-  gl_state_t &state_;
   GLuint name_;
   GLenum target_;
   int width_, height_, depth_;
@@ -93,7 +87,7 @@ enum texture_components_t : int
 };
 
 
-rtexture_t load_texture_2d(gl_state_t &gl, const string &path, bool gen_mipmaps = true,
+bool load_texture_2d(const string &path, rtexture_t &tex, bool gen_mipmaps = true,
   texture_components_t required_components = TEX_COMP_DEFAULT);
 
 

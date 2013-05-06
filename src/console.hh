@@ -3,6 +3,8 @@
 
 #include "config.hh"
 #include "data/database.hh"
+#include <deque>
+#include <functional>
 #include <list>
 #include <mutex>
 #include <unordered_map>
@@ -12,7 +14,7 @@
 namespace snow {
 
 
-enum cvar_flags_t : int
+enum cvar_flags_t : unsigned
 {
   // Note: all cvar flags that restrict write access are ignored when the cvar
   // is forcibly set to a value.
@@ -37,6 +39,9 @@ enum cvar_flags_t : int
   // Changes to the cvar are delayed until cvar_set_t::update_cvars is called
   // if the cvar is bound to a cvar_set_t. Otherwise, has no effect.
   CVAR_DELAYED          = 0x1 << 7,
+  // Specifies the cvar is invisible to the user (e.g., via a console). This is
+  // never a default flag.
+  CVAR_INVISIBLE        = 0x1 << 8,
   // Cvar has been modified (do not set this yourself -- it's not needed)
   CVAR_MODIFIED         = 0x1 << 16,
   CVAR_HAS_CACHE        = CVAR_DELAYED | CVAR_MODIFIED,
@@ -69,9 +74,9 @@ enum cvar_flags_t : int
 
 struct cvar_t
 {
-  cvar_t(const string &name, int value, int flags = CVAR_FLAGS_DEFAULT);
-  cvar_t(const string &name, float value, int flags = CVAR_FLAGS_DEFAULT);
-  cvar_t(const string &name, const string &value, int flags = CVAR_FLAGS_DEFAULT);
+  cvar_t(const string &name, int value, unsigned flags = CVAR_FLAGS_DEFAULT);
+  cvar_t(const string &name, float value, unsigned flags = CVAR_FLAGS_DEFAULT);
+  cvar_t(const string &name, const string &value, unsigned flags = CVAR_FLAGS_DEFAULT);
 
   cvar_t(const cvar_t &) = default;
 
@@ -79,9 +84,10 @@ struct cvar_t
   cvar_t &operator = (const cvar_t &) = delete;
   cvar_t &operator = (cvar_t &&) = delete;
 
+  uint32_t name_hash() const;
   const string &name() const;
-  int flags() const;
-  bool has_flags(int flags) const;
+  unsigned flags() const;
+  bool has_flags(unsigned flags) const;
 
   int type() const;
 
@@ -106,22 +112,56 @@ struct cvar_t
   // to revoke changes so you don't accidentally end up with an invalid iter.
   void revoke_changes();
 
+  // Updates the current value to the cached value -- typically only called by
+  // cvar_set_t::update_cvars
+  void update();
+
 private:
   friend struct cvar_set_t;
 
   bool can_modify() const;
-  // Updates the current value to the cached value -- only called by
-  // cvar_set_t::update_cvars
-  void update();
 
   struct cvar_set_t *owner_;
-  int             flags_;     // associated flags
+  uint32_t        hash_;
+  unsigned        flags_;     // associated flags
   int             int_value_;   // atoi(value_.c_str()) (atoX skips exceptions)
   float           float_value_; // atof(value_.c_str())
   string          name_;   // cvar name
   string          value_;  // to_string(int or float)
   string          cache_;  // cached value (not retreived prior to update)
   std::list<cvar_t *>::const_iterator update_iter_;
+};
+
+
+
+struct ccmd_t
+{
+  using arg_t = std::pair<string::const_iterator, string::const_iterator>;
+  using args_t = std::deque<arg_t>;
+  using ccmd_fn_t = std::function<void(cvar_set_t &cvars, const args_t &)>;
+
+  ccmd_t(const string &name, const ccmd_fn_t &fn);
+  ccmd_t(const string &name, ccmd_fn_t &&fn);
+
+  uint32_t name_hash() const;
+  const string &name() const;
+
+  // This is a no-op if either:
+  // 1) the call_ function is a nullptr (this will crash the ctor though)
+  // 2) the ccmd_t is not registered ot a cvar_set_t.
+  void call(const args_t &);
+  void call(const string &args_str);
+
+
+  static size_t ccmd_arg_iters(const string &str, args_t &out, size_t max = SIZE_MAX);
+
+private:
+  friend struct cvar_set_t;
+
+  cvar_set_t *  owner_;
+  string        name_;
+  uint32_t      hash_;
+  ccmd_fn_t     call_;
 };
 
 
@@ -139,6 +179,8 @@ struct cvar_set_t
 {
   using ptr_list_t = std::list<cvar_t *>;
 
+  cvar_set_t();
+
   // Inserts or updates values for any cvars in the cvar set into the database's
   // console_variables table.
   void write_cvars(database_t &db);
@@ -150,20 +192,29 @@ struct cvar_set_t
   // Tries to find a cvar with the given name, returns it if it exists. Returns
   // nullptr otherwise.
   cvar_t *get_cvar(const string &name) const;
+  // Tries to find a cvar with the given hash, returns it if it exists.
+  // Otherwise, returns nullptr.
+  cvar_t *get_cvar(uint32_t hash) const;
   // Tries to find a cvar with the given name, returns it if it exists. If it
   // doesn't exist, a new cvar will be created with the provided default_value
   // and default_flags and registered in the cvar set.
   cvar_t *get_cvar(const string &name,
     const string &default_value,
     int default_flags = CVAR_FLAGS_DEFAULT);
+  cvar_t *get_cvar(const string &name,
+    int default_value,
+    int default_flags = CVAR_FLAGS_DEFAULT);
+  cvar_t *get_cvar(const string &name,
+    float default_value,
+    int default_flags = CVAR_FLAGS_DEFAULT);
 
   // Allocates a cvar using an internal vector of cvars and returns it.
   // This does not register the cvar in the cvar_set_t, though the pointer to
   // the returned cvar will be invalid either after the cvar set's destruction
   // or after clear() is called.
-  cvar_t *make_cvar(const string &name, int value, int flags = CVAR_FLAGS_DEFAULT);
-  cvar_t *make_cvar(const string &name, float value, int flags = CVAR_FLAGS_DEFAULT);
-  cvar_t *make_cvar(const string &name, const string &value, int flags = CVAR_FLAGS_DEFAULT);
+  cvar_t *make_cvar(const string &name, int value, unsigned flags = CVAR_FLAGS_DEFAULT);
+  cvar_t *make_cvar(const string &name, float value, unsigned flags = CVAR_FLAGS_DEFAULT);
+  cvar_t *make_cvar(const string &name, const string &value, unsigned flags = CVAR_FLAGS_DEFAULT);
   // Adds an existing cvar to the cvar set. This cvar should not be shared with
   // other cvar sets. This does not copy the cvar, it keeps the address in its
   // internal map.
@@ -171,6 +222,30 @@ struct cvar_set_t
   bool unregister_cvar(cvar_t *cvar);
 
   void update_cvars();
+
+  bool register_ccmd(ccmd_t *ccmd);
+  bool unregister_ccmd(ccmd_t *ccmd);
+  // Gets a console command with the given name. Returns it if found, nullptr
+  // otherwise.
+
+  // Will do one of three things:
+  // Either a) it will call a ccmd with the first name in the command string or
+  // b) if the string is a single name, it will get the value of the named cvar
+  // or c) if the string has multiple values and names a cvar, it will set the
+  // cvar to the combination of all those values minus preceeding/trailing
+  // whitespace.
+  void execute(const string &command, bool force = false);
+
+  ccmd_t *get_ccmd(const string &name) const;
+  // Hash version of above.
+  ccmd_t *get_ccmd(uint32_t hash) const;
+  // Calls the given console command, if it exists, with the given argument string.
+  // This is essentially a convenience function for getting the ccmd by name and
+  // calling it. Returns true if the ccmd was called (regardless of whether the
+  // ccmd was successful or not).
+  bool call_ccmd(const string &name, const ccmd_t::args_t &args);
+
+  // Clears both cvars and ccmds from the set
   void clear();
 
   // Use these before calling update_cvars to iterate over all changed cvars
@@ -179,9 +254,24 @@ struct cvar_set_t
 
 private:
   friend struct cvar_t;
+  struct console_item_t {
+    enum : unsigned {
+      KIND_CVAR,
+      KIND_CCMD
+    } kind;
+    union {
+      cvar_t *cvar;
+      ccmd_t *cmd;
+    };
+  };
 
-  std::map<size_t, cvar_t *> cvars_   { };
+  using item_map_t = std::unordered_map<uint32_t, console_item_t>;
+
+  item_map_t cvars_ { };
   ptr_list_t update_cvars_ { };
+  // FIXME: Use std::list so cvar_t/ccmd_t pointers aren't invalidated later
+  // NOTE: determine a fixed size for the vector, reserve
+  // enough, and then quietly fail on overflow.
   std::vector<cvar_t> temp_cvars_     { };
 };
 

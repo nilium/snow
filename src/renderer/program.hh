@@ -15,13 +15,7 @@ struct rshader_t;
 
 struct S_EXPORT rprogram_t
 {
-  friend struct gl_state_t;
-
-  // For move semantics to work, program objects must share the same
-  // gl_state_t, otherwise an exception will be thrown if assigning one shader
-  // object to another when their state objects differ.
-
-  rprogram_t(gl_state_t &state);
+  rprogram_t();
   rprogram_t(rprogram_t &&shader);
   rprogram_t &operator = (rprogram_t &&shader);
   ~rprogram_t();
@@ -70,7 +64,7 @@ struct S_EXPORT rprogram_t
   // uniform bindings associated with this shader.
   void            unload();
 
-  inline bool     has_error() const { return error_str_.length() != 0; }
+  inline bool     has_error() const { return error_str_.size() != 0; }
   inline string   error_string() const { return error_str_; }
 
 private:
@@ -88,8 +82,6 @@ private:
   S_HIDDEN
   void            load_attribs();
 
-  // GL state object, needed for use()
-  gl_state_t &    state_;
   // Program object name
   GLuint          program_;
   // Whether the program has been linked yet

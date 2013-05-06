@@ -22,7 +22,7 @@ namespace snow {
 
 
 #ifndef USE_LOCAL_SERVER
-#define USE_LOCAL_SERVER  (0)
+#define USE_LOCAL_SERVER  (USE_SERVER)
 #endif
 #define UP_BANDWIDTH      (14400 / 8)
 #define DOWN_BANDWIDTH    (57600 / 8)
@@ -35,7 +35,6 @@ namespace {
 
 client_t         g_client;
 std::once_flag   g_init_flag;
-dispatch_queue_t g_main_queue = NULL;
 
 
 
@@ -47,16 +46,20 @@ void client_cleanup();
 void cl_global_init()
 {
   std::call_once(g_init_flag, [] {
+#if !S_USE_GL_2
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#else
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_NO_PROFILE);
+#endif
 #define USE_GLFW_HDPI_EXTENSION
 #ifdef USE_GLFW_HDPI_EXTENSION
     glfwWindowHint(GLFW_HIDPI_IF_AVAILABLE, GL_TRUE);
 #endif
-
-    g_main_queue = dispatch_get_main_queue();
 
     s_log_note("---------------- STATIC INIT FINISHED ----------------");
 
@@ -77,14 +80,6 @@ void client_cleanup()
 
 
 
-dispatch_queue_t cl_main_queue()
-{
-  cl_global_init();
-  return g_main_queue;
-}
-
-
-
 client_t &client_t::get_client(int client_num)
 {
   if (client_num != DEFAULT_CLIENT_NUM)
@@ -97,7 +92,11 @@ client_t &client_t::get_client(int client_num)
 
 client_t::client_t() :
   running_(false),
-  frame_queue_(dispatch_queue_create(FRAME_QUEUE_NAME, DISPATCH_QUEUE_CONCURRENT))
+  cmd_quit_("quit", [=](cvar_set_t &cvars, const ccmd_t::args_t &args) {
+    if (cl_willQuit) {
+      cl_willQuit->seti(1);
+    }
+  })
 {
 }
 
@@ -125,11 +124,9 @@ void client_t::initialize(int argc, const char *argv[])
   }
 
   event_queue_.set_window_callbacks(window_, ALL_EVENT_KINDS);
-  glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN);
+  glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_CAPTURED);
 
   s_log_note("------------------- INIT FINISHED --------------------");
-
-  input_group_ = dispatch_group_create();
 
 #if USE_LOCAL_SERVER
   // Create client host
@@ -151,9 +148,12 @@ void client_t::initialize(int argc, const char *argv[])
   }
 #endif
 
+  res_.prepare_resources();
+
   // Launch frameloop thread
-  s_log_note("Launching frameloop thread");
-  async_thread(&client_t::run_frameloop, this);
+  s_log_note("Launching frameloop");
+  // async_thread(&client_t::run_frameloop, this);
+  run_frameloop();
 }
 
 
@@ -165,6 +165,7 @@ void client_t::quit()
 
 
 
+#if USE_SERVER
 bool client_t::connect(ENetAddress address)
 {
   peer_ = enet_host_connect(host_, &address, 2, 0);
@@ -214,6 +215,7 @@ void client_t::disconnect()
     host_ = NULL;
   }
 }
+#endif
 
 
 
@@ -243,16 +245,14 @@ void client_t::terminate()
 
 void client_t::dispose()
 {
+  #if USE_SERVER
   if (is_connected()) {
     disconnect();
   }
-
-  if (frame_queue_) {
-    dispatch_release(frame_queue_);
-    frame_queue_ = nullptr;
-  }
+  #endif
 
   if (window_) {
+    glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
     glfwDestroyWindow(window_);
     window_ = nullptr;
   }

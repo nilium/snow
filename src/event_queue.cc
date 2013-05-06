@@ -9,25 +9,6 @@ namespace {
 
 
 /*******************************************************************************
-*                          Event callback prototypes                           *
-*******************************************************************************/
-
-void ecb_key_event(GLFWwindow *window, int key, int action);
-void ecb_mouse_event(GLFWwindow *window, int button, int action);
-void ecb_char_event(GLFWwindow *window, int character);
-void ecb_mouse_pos_event(GLFWwindow *window, int x, int y);
-void ecb_mouse_scroll_event(GLFWwindow *window, double x, double y);
-void ecb_mouse_enter_event(GLFWwindow *window, int entered);
-int  ecb_window_close_event(GLFWwindow *window);
-void ecb_window_move_event(GLFWwindow *window, int x, int y);
-void ecb_window_size_event(GLFWwindow *window, int width, int height);
-void ecb_window_focus_event(GLFWwindow *window, int focused);
-void ecb_window_iconify_event(GLFWwindow *window, int iconified);
-
-
-
-
-/*******************************************************************************
 *                                Event mappings                                *
 *******************************************************************************/
 
@@ -47,141 +28,6 @@ const event_name_map_t g_event_names {
   std::make_pair(WINDOW_MOVE_EVENT,    "WINDOW_MOVE_EVENT"),
   std::make_pair(OPAQUE_EVENT,         "OPAQUE_EVENT"),
 };
-
-
-
-/*******************************************************************************
-*                        Event callback implementations                        *
-*******************************************************************************/
-
-void ecb_key_event(GLFWwindow *window, int key, int action)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, KEY_EVENT, glfwGetTime()};
-    event.key = {key, action};
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_mouse_event(GLFWwindow *window, int button, int action)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_EVENT, glfwGetTime()};
-    event.mouse = {button, action};
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_char_event(GLFWwindow *window, int character)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, CHAR_EVENT, glfwGetTime()};
-    event.character = character;
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_mouse_pos_event(GLFWwindow *window, int x, int y)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_MOVE_EVENT, glfwGetTime()};
-    event.mouse_pos = {x, y};
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_mouse_scroll_event(GLFWwindow *window, double x, double y)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_SCROLL_EVENT, glfwGetTime()};
-    event.scroll = {x, y};
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_mouse_enter_event(GLFWwindow *window, int entered)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_ENTER_EVENT, glfwGetTime()};
-    event.entered = (entered == GL_TRUE);
-    queue->emit_event(event);
-  }
-}
-
-
-int ecb_window_close_event(GLFWwindow *window)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_CLOSE_EVENT, glfwGetTime()};
-    queue->emit_event(event);
-  }
-  return GL_FALSE;
-}
-
-
-
-void ecb_window_move_event(GLFWwindow *window, int x, int y)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_MOVE_EVENT, glfwGetTime()};
-    event.window_pos = {x, y};
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_window_size_event(GLFWwindow *window, int width, int height)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_SIZE_EVENT, glfwGetTime()};
-    event.window_size = {width, height};
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_window_focus_event(GLFWwindow *window, int focused)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_FOCUS_EVENT, glfwGetTime()};
-    event.focused = (focused == GL_TRUE);
-    queue->emit_event(event);
-  }
-}
-
-
-
-void ecb_window_iconify_event(GLFWwindow *window, int iconified)
-{
-  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
-  if (queue) {
-    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_ICONIFY_EVENT, glfwGetTime()};
-    event.iconified = (iconified == GL_TRUE);
-    queue->emit_event(event);
-  }
-}
 
 
 } // namespace <anon>
@@ -207,25 +53,12 @@ const string &event_kind_string(event_kind_t kind)
 *******************************************************************************/
 
 
-
-// bool event_queue_t::wait_event(event_t &out, dispatch_time_t timeout)
-// {
-//   if (timeout != DISPATCH_TIME_FOREVER) {
-//     while ()
-//       dispatch_barrier_sync_s(queue_, assign_out);
-//   } else {
-//     while (!set)
-//       dispatch_barrier_sync_s(queue_, assign_out);
-//   }
-//   return set;
-// }
-
-
-
 bool event_queue_t::peek_event(event_t &out) const
 {
   bool set = false;
-  std::lock_guard<std::mutex> lock(lock_);
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
   if (!events_.empty()) {
     out = events_.front();
     set = true;
@@ -238,7 +71,9 @@ bool event_queue_t::peek_event(event_t &out) const
 bool event_queue_t::poll_event(event_t &out)
 {
   bool set = false;
-  std::lock_guard<std::mutex> lock(lock_);
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
   if (!events_.empty()) {
     out = events_.front();
     events_.pop_front();
@@ -252,7 +87,9 @@ bool event_queue_t::poll_event(event_t &out)
 bool event_queue_t::poll_event_before(event_t &out, double time)
 {
   bool set = false;
-  std::lock_guard<std::mutex> lock(lock_);
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
   if (!events_.empty()) {
     event_list_t::const_iterator iter;
     event_list_t::const_iterator end = events_.cend();
@@ -283,7 +120,9 @@ bool event_queue_t::poll_event_before(event_t &out, double time)
 void event_queue_t::emit_event(const event_t &event)
 {
   const event_t copy = event;
-  std::lock_guard<std::mutex> lock(lock_);
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
   events_.push_back(copy);
   if (last_event_ == events_.cend()) {
     last_event_ = events_.cend();
@@ -293,9 +132,32 @@ void event_queue_t::emit_event(const event_t &event)
 
 
 
+void event_queue_t::set_frame_time(double time)
+{
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
+  frame_time_ = time;
+}
+
+
+
+void event_queue_t::clear()
+{
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
+  events_.clear();
+  last_event_ = events_.cend();
+}
+
+
+
 auto event_queue_t::event_queue() const -> event_list_t
 {
-  std::lock_guard<std::mutex> lock(lock_);
+#if USE_LOCKED_EVENT_QUEUE
+  tbb::mutex::scoped_lock lock(lock_);
+#endif
   event_list_t copy;
   copy = events_;
   return copy;
@@ -365,6 +227,141 @@ void event_queue_t::set_window_callbacks(GLFWwindow *window, int events_mask)
      : NULL));
 
   #undef flag_check
+}
+
+
+
+/*******************************************************************************
+*                        Event callback implementations                        *
+*******************************************************************************/
+
+void event_queue_t::ecb_key_event(GLFWwindow *window, int key, int action)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, KEY_EVENT, queue->frame_time_};
+    event.key = {key, action};
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_mouse_event(GLFWwindow *window, int button, int action)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_EVENT, queue->frame_time_};
+    event.mouse = {button, action};
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_char_event(GLFWwindow *window, unsigned int character)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, CHAR_EVENT, queue->frame_time_};
+    event.character = character;
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_mouse_pos_event(GLFWwindow *window, double x, double y)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_MOVE_EVENT, queue->frame_time_};
+    event.mouse_pos = {x, y};
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_mouse_scroll_event(GLFWwindow *window, double x, double y)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_SCROLL_EVENT, queue->frame_time_};
+    event.scroll = {x, y};
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_mouse_enter_event(GLFWwindow *window, int entered)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_ENTER_EVENT, queue->frame_time_};
+    event.entered = (entered == GL_TRUE);
+    queue->emit_event(event);
+  }
+}
+
+
+void event_queue_t::ecb_window_close_event(GLFWwindow *window)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_CLOSE_EVENT, queue->frame_time_};
+    queue->emit_event(event);
+  }
+  glfwSetWindowShouldClose(window, GL_FALSE);
+}
+
+
+
+void event_queue_t::ecb_window_move_event(GLFWwindow *window, int x, int y)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_MOVE_EVENT, queue->frame_time_};
+    event.window_pos = {x, y};
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_window_size_event(GLFWwindow *window, int width, int height)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_SIZE_EVENT, queue->frame_time_};
+    event.window_size = {width, height};
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_window_focus_event(GLFWwindow *window, int focused)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_FOCUS_EVENT, queue->frame_time_};
+    event.focused = (focused == GL_TRUE);
+    queue->emit_event(event);
+  }
+}
+
+
+
+void event_queue_t::ecb_window_iconify_event(GLFWwindow *window, int iconified)
+{
+  auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
+  if (queue) {
+    event_t event = {EVENT_SENDER_WINDOW, {window}, WINDOW_ICONIFY_EVENT, queue->frame_time_};
+    event.iconified = (iconified == GL_TRUE);
+    queue->emit_event(event);
+  }
 }
 
 

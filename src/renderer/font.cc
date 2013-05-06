@@ -3,7 +3,7 @@
 
 #include "font.hh"
 #include "../data/database.hh"
-#include "../ext/utf8.h"
+#include "../ext/utf8/unchecked.h"
 #include "draw_2d.hh"
 #include <algorithm>
 
@@ -60,6 +60,18 @@ rfont_t::~rfont_t()
   glyphs_.clear();
   kerns_.clear();
   pages_.clear();
+}
+
+
+
+/*==============================================================================
+  valid
+
+    Returns whether the font is valid (was successfully loaded and such).
+==============================================================================*/
+bool rfont_t::valid() const
+{
+  return valid_;
 }
 
 
@@ -168,6 +180,7 @@ void rfont_t::draw_text(
   const vec2f_t &baseline,
   const string &text,
   const vec4_t<uint8_t> &color,
+  bool ignore_newlines,
   float scale) const
 {
   vec2f_t pos = {
@@ -187,10 +200,14 @@ void rfont_t::draw_text(
     uint32_t code = u8::next(iter);
 
     if (code == '\n') {
-      last_code = -1;
-      head.y -= line_height_ * scale;
-      pos = head;
-      continue;
+      if (ignore_newlines) {
+        code = ' ';
+      } else {
+        last_code = -1;
+        head.y -= line_height_ * scale;
+        pos = head;
+        continue;
+      }
     }
 
     glyphmap_t::const_iterator glyph_iter = glyphs_.find(code);
@@ -238,6 +255,18 @@ float rfont_t::kern_for(uint32_t first, uint32_t second) const
 
 
 
+#if !NDEBUG
+#define BAIL_IF_ERROR(DB, MESSAGE)                                            \
+  if ((DB).has_error()) {                                                     \
+    valid_ = false;                                                           \
+    s_log_error("%S - DB Error: %s", (MESSAGE), (DB).error_msg().c_str());    \
+  }
+#else
+#define BAIL_IF_ERROR(DB, MESSAGE)
+#endif
+
+
+
 /*==============================================================================
   load_from_db
 
@@ -246,12 +275,11 @@ float rfont_t::kern_for(uint32_t first, uint32_t second) const
 void rfont_t::load_from_db(database_t &db)
 {
   if (!db.is_open()) {
-    s_throw(std::invalid_argument, "Database is not open");
+    s_log_error("Database is not open");
+    return;
   }
 
   // To save on error handling code, let the DB throw if something bad happens
-  bool throw_reset = db.throw_on_error();
-  db.set_throw_on_error(true);
 
   int font_id = INT_MIN;    // Font row ID in the database
   unsigned num_glyphs, num_kerns;
@@ -259,7 +287,10 @@ void rfont_t::load_from_db(database_t &db)
   // Look for font info for the given name, throw exception if none found
   {
     dbstatement_t info_query = db.prepare(font_info_query_string);
+    BAIL_IF_ERROR(db, "Preparing statement");
+
     info_query.bind_text_static(":font_id", name_);
+    BAIL_IF_ERROR(db, "Setting font_id");
 
     for (dbresult_t &fir : info_query) {
       font_id      = fir.column_int("font_id");
@@ -280,10 +311,16 @@ void rfont_t::load_from_db(database_t &db)
     }
   }
 
+  BAIL_IF_ERROR(db, "Reading font info");
+
   // Crap pants if no font found.
   if (font_id == INT_MIN) {
-    s_throw(std::invalid_argument, "No font with given name found");
+    s_log_error("No font named '%s' found", name_.c_str());
+    valid_ = false;
+    return;
   }
+
+  valid_ = true;
 
   // Load kerns/glyphs as needed
   if (num_glyphs) {
@@ -296,8 +333,6 @@ void rfont_t::load_from_db(database_t &db)
 
   // TODO: Load page materials (<NAME>_<PAGENUM>.png)
   // pages[N] = get_material(...);
-
-  db.set_throw_on_error(throw_reset);
 }
 
 
@@ -310,7 +345,9 @@ void rfont_t::load_from_db(database_t &db)
 void rfont_t::load_glyphs_from_db(database_t &db, const int font_id)
 {
   dbstatement_t glyph_query = db.prepare(font_glyph_query_string);
+  BAIL_IF_ERROR(db, "Preparing glyph query");
   glyph_query.bind_int(":font_id", font_id);
+  BAIL_IF_ERROR(db, "Assigning font_id in glyph query");
 
   vec2f_t page_scale = ((vec2f_t)page_size_).inverse();
 
@@ -334,8 +371,8 @@ void rfont_t::load_glyphs_from_db(database_t &db, const int font_id)
       fgr.column_float("advance_y")
     };
     glyph.offset  = {
-      fgr.column_float("offset_x"),
-      fgr.column_float("offset_y")
+      std::ceil(fgr.column_float("offset_x")),
+      std::ceil(fgr.column_float("offset_y"))
     };
 
     glyph.uv_min   *= page_scale;
@@ -350,6 +387,9 @@ void rfont_t::load_glyphs_from_db(database_t &db, const int font_id)
       glyph
     });
   }
+
+  BAIL_IF_ERROR(db, "Reading glyphs from font DB");
+  valid_ = valid_ && true;
 }
 
 
@@ -363,7 +403,11 @@ void rfont_t::load_glyphs_from_db(database_t &db, const int font_id)
 void rfont_t::load_kerns_from_db(database_t &db, const int font_id)
 {
   dbstatement_t kern_query = db.prepare(font_kern_query_string);
+  BAIL_IF_ERROR(db, "Preparing kernings query");
+
   kern_query.bind(":font_id", font_id);
+  BAIL_IF_ERROR(db, "Assigning font_id for kernings query");
+
   const auto kterm = kerns_.cend();
   const auto gterm = glyphs_.cend();
   for (auto &fkr : kern_query) {
@@ -372,7 +416,8 @@ void rfont_t::load_kerns_from_db(database_t &db, const int font_id)
     const float amount = fkr.column_float("amount");
     const std::pair<uint32_t, uint32_t> code_pair { first, second };
 
-    if (kerns_.find(code_pair) != kterm ||
+    if (amount == 0.0f ||
+        kerns_.find(code_pair) != kterm ||
         glyphs_.find(first) == gterm ||
         glyphs_.find(second) == gterm) {
       s_log_note("Skipping kerning for glyph pair <%u, %u>", first, second);
@@ -386,6 +431,9 @@ void rfont_t::load_kerns_from_db(database_t &db, const int font_id)
       amount
     });
   }
+
+  BAIL_IF_ERROR(db, "Reading kernings from font DB");
+  valid_ = valid_ && true;
 }
 
 

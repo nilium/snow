@@ -32,7 +32,7 @@ struct rmaterial_t
 
   friend struct gl_state_t;
 
-  rmaterial_t(gl_state_t &gl);
+  rmaterial_t();
   virtual ~rmaterial_t() = 0;
 
 
@@ -53,9 +53,6 @@ struct rmaterial_t
   virtual void set_projection(const mat4f_t &proj) = 0;
   // Sets the modelview matrix for the material
   virtual void set_modelview(const mat4f_t &mv) = 0;
-
-protected:
-  gl_state_t &state_;
 };
 
 

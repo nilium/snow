@@ -8,8 +8,8 @@
 namespace snow {
 
 
-rmaterial_basic_t::rmaterial_basic_t(gl_state_t &gl) :
-  rmaterial_t(gl),
+rmaterial_basic_t::rmaterial_basic_t() :
+  rmaterial_t(),
   modelview_(mat4f_t::identity),
   projection_(mat4f_t::identity),
   program_(nullptr),
@@ -56,17 +56,24 @@ void rmaterial_basic_t::prepare_pass(int pass)
       glUniformMatrix4fv(projection_loc_, 1, GL_FALSE, projection_);
       assert_gl("Setting projection matrix");
     }
-    state_.set_active_texture(GL_TEXTURE0);
+    glActiveTexture(GL_TEXTURE0);
     if (texture_ && diffuse_loc_ != -1) {
       texture_->bind();
       glUniform1i(diffuse_loc_, 0);
       assert_gl("Setting diffuse uniform");
     } else {
-      state_.bind_texture(GL_TEXTURE_2D, 0);
+      glBindTexture(GL_TEXTURE_2D, 0);
     }
   } else {
     s_throw(std::runtime_error, "Material is invalid");
   }
+}
+
+
+
+rprogram_t *rmaterial_basic_t::program() const
+{
+  return program_;
 }
 
 
@@ -118,6 +125,13 @@ void rmaterial_basic_t::set_projection(const mat4f_t &proj)
 void rmaterial_basic_t::set_modelview(const mat4f_t &mv)
 {
   modelview_ = mv;
+}
+
+
+
+rtexture_t *rmaterial_basic_t::texture() const
+{
+  return texture_;
 }
 
 

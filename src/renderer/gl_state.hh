@@ -61,7 +61,7 @@ struct S_EXPORT gl_state_t
 
 
   // Call to initialize the state object.
-  void      acquire();
+  void      acquire(bool gl3 = true);
 
 
 /*******************************************************************************
@@ -80,7 +80,7 @@ private:
   version_t glsl_version_ { 1, 0 };
   std::array<bool, SGL_EXTENSION_COUNT> has_extension_;
 
-  void      acquire_system_info();
+  void      acquire_system_info(bool gl3);
 
 public:
 

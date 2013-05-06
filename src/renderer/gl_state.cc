@@ -1,5 +1,7 @@
 #include "gl_state.hh"
 #include "gl_error.hh"
+#include <iterator>
+#include <snow/string/split.hh>
 #include <iostream>
 
 namespace snow {
@@ -16,10 +18,10 @@ namespace {
 gl_state_t::version_t extract_version_pair(const string &version_str)
 {
   gl_state_t::version_t result = {-1, -1};
-  const auto first_dot = version_str.find('.');
-  auto second_dot = version_str.find('.', first_dot + 1);
+  const auto first_dot = version_str.find_index('.');
+  auto second_dot = version_str.find_index('.', first_dot + 1);
   if (second_dot == string::npos)
-    second_dot = version_str.find(' ', first_dot + 1);
+    second_dot = version_str.find_index(' ', first_dot + 1);
 
   if (first_dot == string::npos || first_dot == 0)
     return result;
@@ -49,9 +51,9 @@ gl_state_t::version_t extract_version_pair(const string &version_str)
     This is not called by the constructor but must be called at least once to
     initialize the state object.
 ==============================================================================*/
-void gl_state_t::acquire()
+void gl_state_t::acquire(bool gl3)
 {
-  acquire_system_info();
+  acquire_system_info(gl3);
   acquire_shader_state();
   acquire_attrib_state();
   acquire_texture_state();
@@ -66,7 +68,7 @@ void gl_state_t::acquire()
 
     TODO: Description
 ==============================================================================*/
-void gl_state_t::acquire_system_info()
+void gl_state_t::acquire_system_info(bool gl3)
 {
   const char *string_out;
 
@@ -86,19 +88,32 @@ void gl_state_t::acquire_system_info()
   assert_gl("Getting GL_RENDERER");
   renderer_ = string(string_out);
 
-  GLint num_extensions = 0;
-  glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
-  extensions_.clear();
-  for (GLuint ext_index = 0; ext_index < num_extensions; ++ext_index) {
-    string_out = (const char *)glGetStringi(GL_EXTENSIONS, ext_index);
-    assert_gl("Getting string from GL_EXTENSIONS");
-    extensions_.emplace(string_out);
+  if (gl3) {
+    GLint num_extensions = 0;
+    glGetIntegerv(GL_NUM_EXTENSIONS, &num_extensions);
+    assert_gl("Getting GL_NUM_EXTENSIONS");
+    extensions_.clear();
+    for (GLuint ext_index = 0; ext_index < num_extensions; ++ext_index) {
+      string_out = (const char *)glGetStringi(GL_EXTENSIONS, ext_index);
+      assert_gl("Getting string from GL_EXTENSIONS");
+      extensions_.emplace(string_out);
+    }
+  } else {
+    string_out = (const char *)glGetString(GL_EXTENSIONS);
+    assert_gl("Getting GL_EXTENSIONS");
+    split_string(string(string_out), ' ', std::inserter(extensions_, extensions_.end()));
   }
 
-  glGetIntegerv(GL_MAJOR_VERSION, &version_.first);
-  assert_gl("Getting GL_MAJOR_VERSION");
-  glGetIntegerv(GL_MINOR_VERSION, &version_.second);
-  assert_gl("Getting GL_MINOR_VERSION");
+  if (gl3) {
+    glGetIntegerv(GL_MAJOR_VERSION, &version_.first);
+    assert_gl("Getting GL_MAJOR_VERSION");
+    glGetIntegerv(GL_MINOR_VERSION, &version_.second);
+    assert_gl("Getting GL_MINOR_VERSION");
+  } else {
+    string_out = (const char *)glGetString(GL_VERSION);
+    assert_gl("Getting GL_VERSION");
+    version_ = extract_version_pair(string(string_out));
+  }
 
   glsl_version_ = extract_version_pair(glsl_version_str_);
 

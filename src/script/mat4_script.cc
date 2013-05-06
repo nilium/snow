@@ -242,18 +242,7 @@ int script_mat4_sum(lua_State *L)
 
 
 
-#if 0
-int script_mat4_add_mat4(lua_State *L)
-{
-  mat4f_t &m = lua_tomat4(L, 1);
-  m.add(const mat4_t &other)
-  lua_settop(L, 1);
-  return 1;
-}
-
-
-
-int script_mat4_add_scalar(lua_State *L)
+int script_mat4_add(lua_State *L)
 {
   mat4f_t &m = lua_tomat4(L, 1);
   const int type = lua_type(L, 2);
@@ -265,18 +254,9 @@ int script_mat4_add_scalar(lua_State *L)
     m.add(lua_tonumber(L, 2));
     break;
   default:
-    return luaL_error(L, "mat4:sum - Expected number or mat4, got %s", lua_typename(L, type));
+    return luaL_error(L, "mat4:add - Expected number or mat4, got %s", lua_typename(L, type));
   }
   lua_settop(L, 1);
-  return 1;
-}
-
-
-
-int script_mat4_difference_mat4(lua_State *L)
-{
-  mat4f_t &m = lua_tomat4(L, 1);
-  m.difference(const mat4_t &other) const
   return 1;
 }
 
@@ -285,7 +265,17 @@ int script_mat4_difference_mat4(lua_State *L)
 int script_mat4_difference(lua_State *L)
 {
   mat4f_t &m = lua_tomat4(L, 1);
-  m.difference(T scalar) const
+  const int type = lua_type(L, 2);
+  switch (type) {
+  case LUA_TUSERDATA:
+    lua_pushmat4(L, m.difference(lua_tomat4(L, 2)));
+    break;
+  case LUA_TNUMBER:
+    lua_pushmat4(L, m.difference(lua_tonumber(L, 2)));
+    break;
+  default:
+    return luaL_error(L, "mat4:difference - Expected number or mat4, got %s", lua_typename(L, type));
+  }
   return 1;
 }
 
@@ -303,7 +293,7 @@ int script_mat4_subtract(lua_State *L)
     m.subtract(lua_tonumber(L, 2));
     break;
   default:
-    return luaL_error(L, "mat4:sum - Expected number or mat4, got %s", lua_typename(L, type));
+    return luaL_error(L, "mat4:subtract - Expected number or mat4, got %s", lua_typename(L, type));
   }
   lua_settop(L, 1);
   return 1;
@@ -314,7 +304,23 @@ int script_mat4_subtract(lua_State *L)
 int script_mat4_scaled(lua_State *L)
 {
   mat4f_t &m = lua_tomat4(L, 1);
-  m.scaled(T scalar) const
+  const int type = lua_type(L, 2);
+  switch (type) {
+  case LUA_TNUMBER:
+    lua_pushmat4(L, m.scaled(lua_tonumber(L, 2)));
+    break;
+  case LUA_TUSERDATA:
+    if (lua_ismat4(L, 2)) {
+      lua_pushmat4(L, m.scaled(lua_tomat4(L, 2)));
+      break;
+    } else if (lua_isvec3(L, 2)) {
+      lua_pushmat4(L, m.scaled(lua_tovec3(L, 2)));
+      break;
+    }
+  default:
+    return luaL_error(L, "mat4:scaled - Expected number, vec3, or mat4, got %s",
+      lua_typename(L, type));
+  }
   return 1;
 }
 
@@ -325,15 +331,20 @@ int script_mat4_scale(lua_State *L)
   mat4f_t &m = lua_tomat4(L, 1);
   const int type = lua_type(L, 2);
   switch (type) {
-  case LUA_TUSERDATA:
-
-    m.scale(lua_tomat4(L, 2));
-    break;
   case LUA_TNUMBER:
     m.scale(lua_tonumber(L, 2));
     break;
+  case LUA_TUSERDATA:
+    if (lua_ismat4(L, 2)) {
+      m.scale(lua_tomat4(L, 2));
+      break;
+    } else if (lua_isvec3(L, 2)) {
+      m.scale(lua_tovec3(L, 2));
+      break;
+    }
   default:
-    return luaL_error(L, "mat4:sum - Expected number or mat4, got %s", lua_typename(L, type));
+    return luaL_error(L, "mat4:scale - Expected number, vec3, or mat4, got %s",
+      lua_typename(L, type));
   }
   lua_settop(L, 1);
   return 1;
@@ -341,6 +352,7 @@ int script_mat4_scale(lua_State *L)
 
 
 
+#if 0
 int script_mat4_scaled(lua_State *L)
 {
   mat4f_t &m = lua_tomat4(L, 1);

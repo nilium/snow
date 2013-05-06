@@ -6,15 +6,15 @@
 namespace snow {
 
 
-rbuffer_t::rbuffer_t(gl_state_t &state, GLuint target, GLenum usage, GLsizeiptr size)
-: state_(state), size_(size), target_(target), buffer_(0), usage_(usage)
+rbuffer_t::rbuffer_t(GLuint target, GLenum usage, GLsizeiptr size)
+: size_(size), target_(target), buffer_(0), usage_(usage)
 {
 }
 
 
 
 rbuffer_t::rbuffer_t(rbuffer_t &&buf)
-: state_(buf.state_), size_(buf.size_), target_(buf.target_), buffer_(buf.buffer_), usage_(buf.usage_)
+: size_(buf.size_), target_(buf.target_), buffer_(buf.buffer_), usage_(buf.usage_)
 {
   buf.zero();
 }
@@ -32,9 +32,6 @@ rbuffer_t::~rbuffer_t()
 rbuffer_t &rbuffer_t::operator = (rbuffer_t &&buf)
 {
   if (this != &buf) {
-    if (&state_ != &buf.state_)
-      s_throw(std::invalid_argument, "Unable to move buffer: GL state objects differ");
-
     if (valid() && generated())
       unload();
 
@@ -128,11 +125,13 @@ void rbuffer_t::bind_as(GLenum alt_target)
   if (!generated() && size_ > 0) {
     glGenBuffers(1, &buffer_);
     assert_gl("Failed to generate GL buffer.");
-    state_.bind_buffer(alt_target, buffer_);
+    glBindBuffer(alt_target, buffer_);
+    assert_gl("Binding GL buffer");
     glBufferData(alt_target, size_, NULL, usage_);
     assert_gl("Failed to initialize GL buffer");
   } else {
-    state_.bind_buffer(alt_target, buffer_);
+    glBindBuffer(alt_target, buffer_);
+    assert_gl("Binding GL buffer");
   }
 }
 

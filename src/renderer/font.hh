@@ -25,6 +25,8 @@ struct rfont_t
   rfont_t(database_t &db, const string &name);
   ~rfont_t();
 
+  bool valid() const;
+
   auto name() const -> const string &;
   auto line_height() const -> float;
   auto leading() const -> float;
@@ -39,7 +41,7 @@ struct rfont_t
 
   void draw_text(rdraw_2d_t &draw, const vec2f_t &baseline, const string &text,
                  const vec4_t<uint8_t> &color = { 255, 255, 255, 255 },
-                 float scale = 1.0f) const;
+                 bool ignore_newlines = true, float scale = 1.0f) const;
 
 
 
@@ -67,6 +69,8 @@ private:
   // yes, this is totally sane
   using kern_pair_t = std::pair<uint32_t, uint32_t>;
   using kernmap_t = std::map<kern_pair_t, float>;
+
+  bool                       valid_ = false;
 
   float                      line_height_;
   float                      leading_;

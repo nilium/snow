@@ -7,10 +7,15 @@
 #include <cstring>
 #include <cstdarg>
 #include <array>
-#include "utf8.h"
+#include <sstream>
+#include "utf8/unchecked.h"
 
 
 namespace snow {
+
+
+#define MIN_TOKEN_STORAGE         (128)
+#define MIN_STRING_STORAGE        (64)
 
 
 static const std::vector<string> token_descriptors {
@@ -21,14 +26,14 @@ static const std::vector<string> token_descriptors {
 
   "null",
 
-  ":",
-  "?",
-  "!",
-  "!=",
-  "#",
   ".",
   "..",
   "...",
+
+  "!",
+  "!=",
+  "?",
+  "#",
   "@",
   "$",
   "%",
@@ -38,6 +43,13 @@ static const std::vector<string> token_descriptors {
   "]",
   "{",
   "}",
+  "^",
+  "~",
+  "`",
+  "\\",
+  "/",
+  ",",
+  ";",
   ">",
   ">>",
   ">=",
@@ -46,27 +58,29 @@ static const std::vector<string> token_descriptors {
   "<=",
   "=",
   "==",
-  "-",
-  "+",
-  "*",
-  "^",
-  "~",
-  "`",
-  "\\",
-  "/",
-  ",",
-  ";",
   "|",
   "||",
   "&",
   "&&",
+  ":",
+  "::",
+  "-",
+  "--",
+  "->",
+  "+",
+  "++",
+  "*",
+  "**",
   "\\n",
 
   "identifier",
 
-  "number",
-  "hexnum",
-  "binnum",
+  "integer",
+  "float",
+  "integer exp",
+  "float exp",
+  "hexnum lit",
+  "binary lit",
   "'...' string",
   "\"...\" string",
 
@@ -74,17 +88,29 @@ static const std::vector<string> token_descriptors {
   "/* comment */",
 };
 
+static const string g_newline_str = "\n";
+
+
+
+std::ostream &operator << (std::ostream &out, const lexer_pos_t &in)
+{
+  std::stringstream outstr;
+  outstr << '[' << in.line << ':' << in.column << ']';
+  return out << outstr.str();
+}
+
 
 
 token_t::token_t(token_t &&token) :
   kind(token.kind),
-  line(token.line),
-  column(token.column),
-  value_(std::move(token.value_))
+  pos(token.pos),
+  from(std::move(token.from)),
+  to(std::move(token.to)),
+  value(std::move(token.value))
 {
-  token.kind    = TOK_INVALID;
-  token.line    = 0;
-  token.column  = 0;
+  token.kind        = TOK_INVALID;
+  token.pos.line    = 0;
+  token.pos.column  = 0;
 }
 
 
@@ -93,22 +119,11 @@ token_t &token_t::operator = (token_t &&token)
 {
   if (&token != this) {
     kind          = token.kind;
-    line          = token.line;
-    column        = token.column;
-    value_        = std::move(token.value_);
+    value        = std::move(token.value);
 
     token.kind    = TOK_INVALID;
-    token.line    = 0;
-    token.column  = 0;
   }
   return *this;
-}
-
-
-
-const string &token_t::value() const
-{
-  return value_;
 }
 
 
@@ -124,35 +139,41 @@ const string &token_t::descriptor() const
 
 
 
-void lexer_t::set_error(const char *errlit, size_t line, size_t col)
+void lexer_t::set_error(const char *errlit, lexer_error_t code, const lexer_pos_t &pos)
 {
+  error_.code = code;
   error_.message = string(errlit);
-  error_.line = line;
-  error_.column = col;
+  error_.pos = pos;
 }
 
 
 
 lexer_t::lexer_t() :
   source_end_(),
-  current_({1, 1, 0}),
+  current_({0, 0, { 1, 1 }}),
   tokens_(),
-  error_({0, 0})
+  error_({LEXER_FINISHED, { 0, 0 } })
 {
-  // nop
+  tokens_.reserve(MIN_TOKEN_STORAGE);
+}
+
+
+
+void lexer_t::clear()
+{
+  tokens_.clear();
+  error_.message.clear();
+  error_.pos = { 0, 0 };
+  current_.token = 0;
 }
 
 
 
 void lexer_t::reset()
 {
-  tokens_.clear();
   error_.message.clear();
-  error_.line = 0;
-  error_.column = 0;
-  current_.line = 1;
-  current_.column = 1;
-  current_.token = 0;
+  error_.pos = { 0, 0 };
+  current_.pos = { 1, 1 };
 }
 
 
@@ -173,20 +194,6 @@ auto lexer_t::current_mark() const -> token_mark_t
 
 
 
-uint32_t lexer_t::current() const
-{
-  return current_.code;
-}
-
-
-
-bool lexer_t::has_next() const
-{
-  return current_.place != source_end_;
-}
-
-
-
 /*==============================================================================
   lexer_next
 
@@ -200,13 +207,13 @@ bool lexer_t::has_next() const
 ==============================================================================*/
 uint32_t lexer_t::read_next()
 {
-  if (current() == '\n') {
-    current_.line += 1;
-    current_.column = 0;
+  if (current_.code == '\n') {
+    current_.pos.line += 1;
+    current_.pos.column = 0;
   }
 
-  if (has_next()) {
-    ++current_.column;
+  if (current_.place != source_end_) {
+    ++current_.pos.column;
     current_.code = utf8::unchecked::next(current_.place);
   } else {
     current_.code = 0;
@@ -220,7 +227,7 @@ uint32_t lexer_t::read_next()
 
 uint32_t lexer_t::peek_next() const
 {
-  if (has_next()) {
+  if (current_.place != source_end_) {
     return utf8::unchecked::peek_next(current_.place);
   } else {
     return 0;
@@ -232,7 +239,7 @@ uint32_t lexer_t::peek_next() const
 void lexer_t::skip_whitespace()
 {
   uint32_t cur;
-  while ((cur = current()) != 0 &&
+  while ((cur = current_.code) != 0 &&
        (cur == ' ' || cur == '\t' || cur == '\r')) {
     read_next();
   }
@@ -240,87 +247,72 @@ void lexer_t::skip_whitespace()
 
 
 
-token_t lexer_t::read_base_number()
+void lexer_t::read_base_number(token_t &token)
 {
   token_mark_t mark = current_mark();
-  token_t token;
-  token.kind = TOK_NUMBER_LIT;
-  token.line = mark.line;
+  token.kind = TOK_INVALID;
 
-  auto inserter = std::back_inserter(token.value_);
-  utf8::unchecked::append(current(), inserter);
   uint32_t cur = read_next();
-  utf8::unchecked::append(cur, inserter);
 
   if (cur == 'b' || cur == 'B') { // bin
     token.kind = TOK_BIN_LIT;
-    while (has_next() && ((cur = read_next()) == '0' || cur == '1')) {
-      utf8::unchecked::append(cur, inserter);
-    }
+    while (((cur = peek_next()) == '0' || cur == '1')) read_next();
   } else if (cur == 'x' || cur == 'X') {  // hex
     token.kind = TOK_HEX_LIT;
-    while (has_next() && isxdigit(read_next())) {
-      utf8::unchecked::append(cur, inserter);
-    }
+    while (isxdigit(cur = peek_next())) read_next();
   } else {
     set_error("Malformed number literal: not a base-number",
-        current_.line, current_.column);
-    token.kind = TOK_INVALID;
+        LEXER_MALFORMED_BASENUM, current_.pos);
+    return;
   }
 
-  return token;
+  token.value = string(token.from, current_.place);
 }
 
 
 
-token_t lexer_t::read_number()
+void lexer_t::read_number(token_t &token)
 {
-  uint32_t cur = current();
-  token_mark_t mark = current_mark();
+  uint32_t cur = current_.code;
   bool isDec = (cur == '.');
   bool isExp = false;
-  token_t token;
-  token.kind = TOK_NUMBER_LIT;
-  token.line = mark.line;
-  token.column = mark.column;
+  token.kind = TOK_INTEGER_LIT;
 
-  auto inserter = std::back_inserter(token.value_);
-  utf8::unchecked::append(cur, inserter);
-
-  while (has_next() && (cur = read_next()) != 0) {
+  while ((cur = peek_next()) != 0) {
     switch (cur) {
     case '.':
       if (!isDec) {
-        utf8::unchecked::append(cur, inserter);
+        token.kind = TOK_FLOAT_LIT;
         isDec = true;
+        read_next();
         continue;
       }
       break;
 
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      utf8::unchecked::append(cur, inserter);
+      read_next();
       continue;
 
     case 'e': case 'E':
       if (isExp) {
         set_error("Malformed number literal: exponent already provided",
-            current_.line, current_.column);
+            LEXER_MULTIPLE_EXPONENT, current_.pos);
         token.kind = TOK_INVALID;
-        return token;
+        return;
       }
       isExp = true;
-      utf8::unchecked::append(cur, inserter);
-      utf8::unchecked::append((cur = read_next()), inserter);
+      token.kind = token_kind_t(unsigned(token.kind) + 2);
+      cur = read_next();
       if (cur == '-' || cur == '+') {
-        utf8::unchecked::append((cur = read_next()), inserter);
+        cur = read_next();
       }
 
       if (cur < '0' || cur > '9') {
         set_error("Malformed number literal: exponent expected but not found",
-          current_.line, current_.column);
+          LEXER_NO_EXPONENT, current_.pos);
         token.kind = TOK_INVALID;
-        return token;
+        return;
       }
       continue;
 
@@ -328,78 +320,63 @@ token_t lexer_t::read_number()
     }
     break;
   }
-  lex_number_done:
-  return token;
+
+  token.value = string(token.from, current_.place);
 }
 
 
 
-token_t lexer_t::read_word()
+void lexer_t::read_word(token_t &token)
 {
   token_mark_t mark = current_mark();
-  token_t token;
   token.kind = TOK_ID;
-  token.line = mark.line;
-  token.column = mark.column;
 
-  auto inserter = std::back_inserter(token.value_);
-  utf8::unchecked::append(current(), inserter);
-
-  while (has_next()) {
-    uint32_t cur = peek_next();
-    if (cur == '_' ||
-      /* is ASCII number */
-      ('0' <= cur && cur <= '9') ||
-      /* is ASCII letter */
-      ('a' <= cur && cur <= 'z') || ('A' <= cur && cur <= 'Z') ||
-      /* character is some other thing that's valid */
-      cur >= 160) {
-      utf8::unchecked::append(read_next(), inserter);
-    } else {
+  uint32_t cur;
+  while ((cur = peek_next())) {
+    if (!(cur == '_' ||
+          /* is ASCII number */
+          ('0' <= cur && cur <= '9') ||
+          /* is ASCII letter */
+          ('a' <= cur && cur <= 'z') || ('A' <= cur && cur <= 'Z') ||
+          /* character is some other thing that's valid */
+          cur >= 160)) {
       break;
     }
+    read_next();
   }
 
-  read_next();
+  token.value = string(token.from, current_.place);
 
-  switch (token.value_.size()) {
+  switch (token.value.size()) {
   case 4:
-    switch (token.value_.front()) {
-    case 't': if (token.value_.find("rue", 1, 3) == 1) token.kind = TOK_TRUE_KW; break;
-    case 'n': if (token.value_.find("ull", 1, 3) == 1) token.kind = TOK_NULL_KW; break;
+    switch (token.value.front()) {
+    case 't': if (token.value.has_suffix("rue", 3)) token.kind = TOK_TRUE_KW; break;
+    case 'n': if (token.value.has_suffix("ull", 3)) token.kind = TOK_NULL_KW; break;
     default: break;
     } break;
   case 5:
-    if (token.value_ == "false") {
+    if (token.value == "false") {
       token.kind = TOK_FALSE_KW;
     }
   default: break;
   }
-
-  return token;
 }
 
 
 
-token_t lexer_t::read_string(const uint32_t delim)
+void lexer_t::read_string(token_t &token, const uint32_t delim)
 {
-  static uint32_t hex_lookup[16] = {
-    0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9,
-    0xA, 0xB, 0xC, 0xD, 0xE, 0xF
-  };
-
-  uint32_t cur = current();
+  uint32_t cur = current_.code;
   token_mark_t mark = current_mark();
   bool escape = false;
-  token_t token;
   token.kind = delim == '"' ? TOK_DOUBLE_STRING_LIT : TOK_SINGLE_STRING_LIT;
-  token.line = mark.line;
-  token.column = mark.column;
+  token.value.reserve(MIN_STRING_STORAGE);
 
-  auto inserter = std::back_inserter(token.value_);
-  utf8::unchecked::append(cur, inserter);
+  auto inserter = std::back_inserter(token.value);
+  // uncomment if skipping quotes isn't worthwhile (note: quote still included in from/to)
+  // utf8::unchecked::append(cur, inserter);
 
-  while (has_next() && (cur = read_next())) {
+  while ((cur = read_next())) {
     if (escape) {
       switch (cur) {
       case 'x': case 'X': {
@@ -407,20 +384,18 @@ token_t lexer_t::read_string(const uint32_t delim)
         if (!isxdigit(peeked)) {
           // will not fail lexing, but will emit an error
           set_error("Malformed unicode literal in string",
-            current_.line, current_.column);
+            LEXER_MALFORMED_UNICODE, current_.pos);
           break;
         }
-        size_t hexnums = cur == 'x' ? 4 : 8;
+        size_t hexnums = (cur == 'x' ? 4 : 8);
         cur = 0;
         do {
-          if (peeked >= 'A') {
-            peeked -= ('A' - 10);
-          } else if (peeked >= 'a') {
-            peeked -= ('a' - 10);
-          } else {
-            peeked -= '0';
-          }
-          cur = (cur << 4) | hex_lookup[peeked];
+          peeked -= (peeked >= 'A'
+            ? 'A' - 10
+            : ( peeked >= 'a'
+              ? 'a' - 10
+              : '0' ));
+          cur = (cur << 4) | peeked;
           --hexnums;
           read_next();
           peeked = peek_next();
@@ -449,83 +424,81 @@ token_t lexer_t::read_string(const uint32_t delim)
   }
 
   if (cur == 0) {
-    set_error("Unterminated string", mark.line, mark.column);
-  } else {
-    utf8::unchecked::append(cur, inserter);
+    set_error("Unterminated string", LEXER_UNTERMINATED_STRING,
+      mark.pos);
+  // uncomment to not skip quotes in value
+  // } else {
+    // utf8::unchecked::append(cur, inserter);
+  }
+}
+
+
+
+void lexer_t::read_line_comment(token_t &token)
+{
+  uint32_t cur;
+  token.kind = TOK_LINE_COMMENT;
+
+  while ((cur = peek_next()) && cur != '\n') {
     read_next();
   }
 
-  return token;
+  if (!skip_comments_) {
+    token.value = string(token.from, current_.place);
+  }
 }
 
 
 
-token_t lexer_t::read_line_comment()
+void lexer_t::read_block_comment(token_t &token)
 {
-  uint32_t cur = current();
-  token_mark_t mark = current_mark();
-  token_t token;
-  token.kind = TOK_LINE_COMMENT;
-  token.line = mark.line;
-  token.column = mark.column;
-
-  auto inserter = std::back_inserter(token.value_);
-
-  do {
-    utf8::unchecked::append(cur, inserter);
-    cur = read_next();
-  } while(cur != 0 && cur != '\n');
-
-  return token;
-}
-
-
-
-token_t lexer_t::read_block_comment()
-{
-  token_mark_t mark = current_mark();
+  const token_mark_t mark = current_mark();
   uint32_t cur = read_next();
-  token_t token;
   token.kind = TOK_BLOCK_COMMENT;
-  token.line = mark.line;
-  token.column = mark.column;
 
-  auto inserter = std::back_inserter(token.value_);
-  utf8::unchecked::append(mark.code, inserter);
-  utf8::unchecked::append(cur, inserter);
-
-  while (has_next() && (cur = read_next())) {
-    utf8::unchecked::append(cur, inserter);
-    if (cur == '*' && peek_next() == '/') {
-      cur = read_next();
-      utf8::unchecked::append(cur, inserter);
+  while ((cur = read_next())) {
+    if (cur == '*' && (cur = peek_next() == '/')) {
+      read_next();
       break;
     }
   }
 
   if (cur == 0) {
-    set_error("Unterminated block comment", mark.line, mark.column);
+    set_error("Unterminated block comment", LEXER_UNTERMINATED_COMMENT,
+      mark.pos);
   } else {
-    read_next();
+    if (!skip_comments_) {
+      token.value = string(token.from, current_.place);
+    }
+  }
+}
+
+
+
+lexer_error_t lexer_t::run(const string &source)
+{
+  auto iter = source.cbegin();
+  return run(iter, source.cend());
+}
+
+
+
+lexer_error_t lexer_t::run(string::const_iterator &begin, const string::const_iterator &end,
+  token_kind_t until, size_t count)
+{
+  at_end_ = false;
+
+  if (begin == end) {
+    return LEXER_FINISHED;
+  } else if (has_error()) {
+    return error_.code;
   }
 
-  return token;
-}
+  const bool skip_com = skip_comments_;
+  const bool skip_nl = skip_newlines_;
+  bool result = true;
 
-
-
-bool lexer_t::run(const string &source)
-{
-  return run(source.cbegin(), source.cend());
-}
-
-
-
-bool lexer_t::run(string::const_iterator begin, const string::const_iterator &end)
-{
   current_.code = 0;
-  current_.column = 0;
-  current_.line = 1;
   current_.place = begin;
   source_end_ = end;
   read_next();
@@ -533,41 +506,44 @@ bool lexer_t::run(string::const_iterator begin, const string::const_iterator &en
   token_mark_t mark;
   token_t token;
   uint32_t cur;
+  uint32_t next; // temp variable for peeking/reading
 
-  while(current() != 0) {
+  token_kind_t last_kind = TOK_INVALID;
+
+  while(current_.code != 0 && count) {
     token.kind = TOK_INVALID;
     skip_whitespace();
 
     mark = current_mark();
-    if ((cur = current()) == 0) {
+    if ((cur = current_.code) == 0) {
       break;
     }
 
+    token.from = current_.place - 1;
+    token.pos = current_.pos;
+
     switch (cur) {
-    case '@':
+
       token.kind = TOK_AT;
-      token.value_ = token_descriptors[TOK_AT];
-      token.line = mark.line;
-      token.column = mark.column;
-      read_next();
+      token.value = token_descriptors[TOK_AT];
       break;
 
+      // TOK_DOT, TOK_DOUBLE_DOT, TOK_TRIPLE_DOT
     case '.':
       switch (peek_next()) {
       case '0': case '1': case '2': case '3': case '4':
       case '5': case '6': case '7': case '8': case '9':
-        token = std::move(read_number());
+        read_number(token);
         break;
       default:
         token.kind = TOK_DOT;
 
-        while(token.kind <= TOK_TRIPLE_DOT && read_next() == '.') {
+        while(token.kind < TOK_TRIPLE_DOT && peek_next() == '.') {
+          read_next();
           ++token.kind;
         }
 
-        token.value_ = token_descriptors[token.kind];
-        token.line = mark.line;
-        token.column = mark.column;
+        token.value = token_descriptors[token.kind];
       }
       break;
 
@@ -576,14 +552,14 @@ bool lexer_t::run(string::const_iterator begin, const string::const_iterator &en
     case '/':
       switch (peek_next()) {
       case '/':
-        token = std::move(read_line_comment());
+        read_line_comment(token);
         break;
       case '*':
-        token = std::move(read_block_comment());
+        read_block_comment(token);
         break;
       default:
         token.kind = TOK_SLASH;
-        token.value_ = token_descriptors[TOK_SLASH];
+        token.value = token_descriptors[TOK_SLASH];
         goto lex_build_token;
       }
       break;
@@ -592,45 +568,64 @@ bool lexer_t::run(string::const_iterator begin, const string::const_iterator &en
       // TOK_DOUBLE_STRING_LIT
     case '"':
     case '\'':
-      token = std::move(read_string(cur));
+      read_string(token, cur);
       break;
 
     case '0':
       switch (peek_next()) {
       case 'x': case 'b':
       case 'X': case 'B':
-      token = std::move(read_base_number());
+      // TOK_HEX_LIT
+      // TOK_BIN_LIT
+      read_base_number(token);
+      goto lex_exit_early;
       default: break;
       }
       // fall-through:
+      // TOK_INTEGER_LIT, TOK_FLOAT_LIT, and EXP variants
     case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      token = std::move(read_number());
+      read_number(token);
       break;
 
-    case '>': token.kind = TOK_GREATER_THAN;  goto lex_doubled_token;
-    case '<': token.kind = TOK_LESS_THAN;     goto lex_doubled_token;
-    case '&': token.kind = TOK_AMPERSAND;     goto lex_doubled_token;
-    case '|': token.kind = TOK_PIPE;          goto lex_doubled_token;
+      // TOK_MINUS, TOK_DOUBLE_MINUS, and TOK_ARROW (special case)
+    case '-': {
+      token.kind = TOK_MINUS;
+      next = peek_next();
+      if (next == '>') {
+        read_next();
+        token.kind = TOK_ARROW;
+        token.value = token_descriptors[TOK_ARROW];
+        break;
+      }
+      goto lex_doubled_token_noread;
+      // Punctuation with combos (TOK_AND, TOK_OR, TOK_GREATER_EQUAL, etc.)
+    case ':': token.kind = TOK_COLON;         goto lex_doubled_token_read;
+    case '=': token.kind = TOK_EQUALS;        goto lex_doubled_token_read;
+    case '>': token.kind = TOK_GREATER_THAN;  goto lex_doubled_token_read;
+    case '<': token.kind = TOK_LESS_THAN;     goto lex_doubled_token_read;
+    case '&': token.kind = TOK_AMPERSAND;     goto lex_doubled_token_read;
+    case '|': token.kind = TOK_PIPE;          goto lex_doubled_token_read;
+    case '+': token.kind = TOK_PLUS;          goto lex_doubled_token_read;
+    case '*': token.kind = TOK_ASTERISK;      goto lex_doubled_token_read;
     case '!': token.kind = TOK_BANG;
-    lex_doubled_token:
-    {
-      auto inserter = std::back_inserter(token.value_);
-      utf8::unchecked::append(cur, inserter);
-      const uint32_t next = read_next();
+lex_doubled_token_read:
+      next = peek_next();
+lex_doubled_token_noread:
       if (next == cur || (cur == '!' && next == '=')) {
-        utf8::unchecked::append(next, inserter);
         ++token.kind;
         read_next();
-      } else if (token.kind < TOK_AMPERSAND && next == '=') {
-        utf8::unchecked::append(next, inserter);
+      } else if (token.kind < TOK_PIPE && next == '=') {
         token.kind = (token_kind_t)((unsigned)token.kind + 2);
         read_next();
       }
+      token.value = token_descriptors[token.kind];
     } break;
 
-    case ':' : token.kind = TOK_COLON;         goto lex_build_token;
+    // Punctuation tokens
     case '?' : token.kind = TOK_QUESTION;      goto lex_build_token;
+    case '#' : token.kind = TOK_HASH;          goto lex_build_token;
+    case '@' : token.kind = TOK_AT;            goto lex_build_token;
     case '$' : token.kind = TOK_DOLLAR;        goto lex_build_token;
     case '%' : token.kind = TOK_PERCENT;       goto lex_build_token;
     case '(' : token.kind = TOK_PAREN_OPEN;    goto lex_build_token;
@@ -639,37 +634,52 @@ bool lexer_t::run(string::const_iterator begin, const string::const_iterator &en
     case ']' : token.kind = TOK_BRACKET_CLOSE; goto lex_build_token;
     case '{' : token.kind = TOK_CURL_OPEN;     goto lex_build_token;
     case '}' : token.kind = TOK_CURL_CLOSE;    goto lex_build_token;
-    case '-' : token.kind = TOK_MINUS;         goto lex_build_token;
-    case '+' : token.kind = TOK_PLUS;          goto lex_build_token;
-    case '*' : token.kind = TOK_ASTERISK;      goto lex_build_token;
     case '^' : token.kind = TOK_CARET;         goto lex_build_token;
     case '~' : token.kind = TOK_TILDE;         goto lex_build_token;
     case '`' : token.kind = TOK_GRAVE;         goto lex_build_token;
     case '\\': token.kind = TOK_BACKSLASH;     goto lex_build_token;
     case ',' : token.kind = TOK_COMMA;         goto lex_build_token;
     case ';' : token.kind = TOK_SEMICOLON;     goto lex_build_token;
-    case '\n': token.kind = TOK_NEWLINE;
-      lex_build_token:
-      token.value_.push_back(cur);
-      read_next();
+lex_build_token:
+      token.value = token_descriptors[token.kind];
       break;
 
+    case '\n':
+      token.kind = TOK_NEWLINE;
+      token.value = g_newline_str;
+      break;
+
+      // TOK_ID, TOK_TRUE_KW, TOK_FALSE_KW, and TOK_NULL_KW
     default:
-      token = std::move(read_word());
+      read_word(token);
     }
 
-    if (token.kind != TOK_INVALID) {
-      new_token(std::move(token));
-    } else if (!has_error()) {
-      set_error("Invalid token", current_.line, current_.column);
+    token.to = current_.place;
+    read_next();
+
+lex_exit_early:
+    last_kind = token.kind;
+    if (!(skip_com && last_kind >= TOK_LINE_COMMENT) && !(skip_nl && last_kind == TOK_NEWLINE)) {
+      if (last_kind != TOK_INVALID) {
+        new_token(std::move(token));
+      } else if (!has_error()) {
+        set_error("Invalid token", LEXER_INVALID_TOKEN, current_.pos);
+      }
+    }
+
+    if (until != TOK_INVALID && last_kind == until) {
+      break;
     }
 
     if (has_error()) {
-      return false;
+      break;
     }
+
+    --count;
   }
 
-  return true;
+  begin = current_.place;
+  return error_.code;
 }
 
 
@@ -681,17 +691,57 @@ const tokenlist_t &lexer_t::tokens() const
 
 
 
-bool lexer_t::has_error() const
+bool lexer_t::skip_comments() const
 {
-  return !(error_.message.empty());
+  return skip_comments_;
 }
 
 
 
-const string &lexer_t::error(size_t *line, size_t *column) const
+void lexer_t::set_skip_comments(bool skip)
 {
-  if (line) *line = error_.line;
-  if (column) *column = error_.column;
+  skip_comments_ = skip;
+}
+
+
+
+bool lexer_t::skip_newlines() const
+{
+  return skip_newlines_;
+}
+
+
+
+void lexer_t::set_skip_newlines(bool skip)
+{
+  skip_newlines_ = skip;
+}
+
+
+
+bool lexer_t::has_error() const
+{
+  return error_.code != LEXER_FINISHED;
+}
+
+
+
+lexer_error_t lexer_t::error_code() const
+{
+  return error_.code;
+}
+
+
+
+const lexer_pos_t &lexer_t::error_position() const
+{
+  return error_.pos;
+}
+
+
+
+const string &lexer_t::error_message() const
+{
   return error_.message;
 }
 

@@ -172,8 +172,13 @@ end -- mkdir_p
 solution "snow"
 configurations { "debug", "release" }
 project "snow"
+
+configuration {}
+
 targetdir "bin"
 kind "WindowedApp"
+
+-- links { "lua" }
 
 -- Option defaults
 g_exclude_suffixes = {}
@@ -188,6 +193,19 @@ newoption {
   trigger = "no-server",
   description = "Disables the server code in the engine build"
 }
+
+newoption {
+  trigger = "with-tbb",
+  description = "Specify a path to Intel's Threading Building Blocks",
+  value = "/path/to/tbb"
+}
+
+if os.is("macosx") then
+  newoption {
+    trigger = "gcc",
+    description = "Specifies use of GCC on OS X"
+  }
+end
 
 -- Compiler flags
 g_version = "0.0.1"
@@ -218,36 +236,85 @@ defines { "DEBUG" }
 flags { "Symbols" }
 
 g_build_config_opts = {
-  USE_EXCEPTIONS = not _OPTIONS["no-exceptions"],
+  USE_EXCEPTIONS = true,
+  USE_SERVER = true
 }
+
+if _OPTIONS["no-exceptions"] ~= nil then
+  g_build_config_opts.USE_EXCEPTIONS = not _OPTIONS["no-exceptions"]
+end
+
+if _OPTIONS["no-server"] ~= nil then
+  g_build_config_opts.USE_SERVER = not _OPTIONS["no-server"]
+end
 
 -- Exceptions
 configuration "no-exceptions"
 flags { "NoExceptions" }
-defines { "USE_EXCEPTIONS=0" }
-
-configuration "not no-exceptions"
-defines { "USE_EXCEPTIONS=1" }
 
 -- OS X specific options
 configuration "macosx"
-files { "src/main.mm" }
-excludes { "src/main.cc" }
+-- links { "Cocoa.framework" }
+-- links { "OpenGL.framework" }
+-- links { "IOKit.framework" }
 
--- disalbed for now because it's a noop (-fobj-arc might become a default later, so who knows)
+linkoptions { "-ObjC++", "-headerpad_max_install_names" }
+
 -- buildoptions { "-fno-objc-arc" }
-buildoptions { "-stdlib=libc++", "-fblocks" }
+configuration "macosx"
 buildoptions { "-ObjC++" }
-linkoptions { "-ObjC++" }
+buildoptions { "-stdlib=libc++" }
 links { "c++" }
 
-configuration { "macosx", "*-Shared" }
-links { "Cocoa.framework" }
-links { "OpenGL.framework" }
-links { "IOKit.framework" }
+local target_path_osx = "bin/snow.app/Contents/MacOS/snow"
+local change_libs_osx = {
+  ["libphysfs.1.dylib"]                                = "@executable_path/../Frameworks/libphysfs.dylib",
+  ["libtbb_debug.dylib"]                               = "@executable_path/../Frameworks/libtbb_debug.dylib",
+  ["libtbb.dylib"]                                     = "@executable_path/../Frameworks/libtbb.dylib",
+  ["libtbbmalloc.dylib"]                               = "@executable_path/../Frameworks/libtbbmalloc.dylib",
+  ["libtbbmalloc_debug.dylib"]                         = "@executable_path/../Frameworks/libtbbmalloc_debug.dylib",
+  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.2.dylib",
+  ["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
+  ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
+  ["/usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib"] = "@executable_path/../Frameworks/libssl.dylib"
+}
 
+do
+  local changes_string = ''
+
+  for from,to in pairs(change_libs_osx) do
+    changes_string = changes_string .. " -change '" .. from .. "' '" .. to .. "'"
+  end
+
+  if #changes_string > 0 then
+    changes_string = changes_string .. " '" .. target_path_osx .. "'"
+    postbuildcommands { "install_name_tool" .. changes_string }
+  end
+end
+
+-- files { "src/main.mm" }
+-- excludes { "src/main.cc" }
+
+-- TBB
 configuration {}
--- libsnow-common
+local tbb_path = "/Users/ncower/source/tbb-4-1"
+if _OPTIONS["with-tbb"] then
+  tbb_path = _OPTIONS["with-tbb"]
+end
+
+libdirs { tbb_path .. "/lib" }
+includedirs { tbb_path .. "/include" }
+
+configuration "debug"
+links { "tbb_debug" }
+-- links { "tbbmalloc_debug" }
+
+configuration "not debug"
+links { "tbb" }
+-- links { "tbbmalloc" }
+
+-- pkg-config packages
+configuration {}
 g_dynamic_libs = { }
 g_static_libs = { "snow-common", "sqlite3", "libenet", "glfw3" }
 if #g_static_libs > 0 then
@@ -262,7 +329,7 @@ if (#g_dynamic_libs + #g_static_libs) > 0 then
 end
 
 -- Generate build-config/pkg-config
-if _ACTION ~= "install" then
+if _ACTION and _ACTION ~= "install" then
   -- Generate build-config.hh
   local config_src = "'src/build-config.hh.in'"
   local config_dst = "'src/build-config.hh'"

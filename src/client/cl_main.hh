@@ -8,7 +8,10 @@
 #include "../event_queue.hh"
 #include "../renderer/gl_state.hh"
 #include "../console.hh"
+#include "../game/resources.hh"
+#if USE_SERVER
 #include <enet/enet.h>
+#endif
 #include <atomic>
 #include <list>
 
@@ -38,12 +41,14 @@ struct S_EXPORT client_t
   // the process.
   void quit();
 
+#if USE_SERVER
   // Attempts to connect to a server at the given address
   bool connect(ENetAddress address);
   // Whether connected to the server
   bool is_connected() const;
   // Disconnects from the server (if connected)
   void disconnect();
+#endif
 
   gl_state_t &gl_state();
   const gl_state_t &gl_state() const;
@@ -64,7 +69,9 @@ protected:
   virtual void read_events(double timeslice);
   virtual void do_frame(double step, double timeslice);
   virtual void dispose();
+#if USE_SERVER
   void pump_netevents(double timeslice);
+#endif
 
 private:
   using netevent_pool_t = object_pool_t<netevent_t, unsigned, false>;
@@ -74,21 +81,29 @@ private:
   double                    sim_time_ = 0;
   double                    base_time_ = 0;
 
+#if USE_SERVER
   ENetHost *                host_ = NULL;
   ENetPeer *                peer_ = NULL;
+  netevent_pool_t           netevent_pool_;
+#endif
 
   GLFWwindow *              window_ = NULL;
-  dispatch_queue_t          frame_queue_ = NULL;
-  dispatch_group_t          input_group_ = NULL;
   event_queue_t             event_queue_;
   gl_state_t                state_;
   std::list<system_pair_t>  systems_ { };
-  netevent_pool_t           netevent_pool_;
   cvar_set_t                cvars_;
+
+  resources_t               res_;
+
+  // CCMDS
+  ccmd_t cmd_quit_;
+
+  // CVARS
+  cvar_t *cl_willQuit;
+  cvar_t *wnd_focused;
+  cvar_t *wnd_mouseMode;
+  cvar_t *r_drawFrame;
 };
-
-
-S_EXPORT dispatch_queue_t cl_main_queue();
 
 
 } // namespace snow

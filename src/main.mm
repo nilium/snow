@@ -5,6 +5,8 @@
 
 #include "client/cl_main.hh"
 #include "sys_main.hh"
+#include "ext/lexer.hh"
+#include <iomanip>
 
 int main(int argc, char const *argv[])
 {
