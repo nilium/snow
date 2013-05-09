@@ -13,8 +13,12 @@ struct game_object_t;
 
 struct S_EXPORT transform_t : public component_t<transform_t, TRANSFORM_COMPONENT>
 {
-  transform_t() = default;
-  transform_t(game_object_t *obj);
+  static constexpr const char *COMPONENT_NAME = "transform";
+
+  transform_t();
+  explicit transform_t(game_object_t *obj);
+
+  virtual ~transform_t();
 
 /*******************************************************************************
 *                               relative changes                               *

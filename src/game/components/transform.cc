@@ -5,8 +5,23 @@
 namespace snow {
 
 
+transform_t::transform_t() :
+  component_t()
+{
+    /* nop */
+}
+
+
+
 transform_t::transform_t(game_object_t *obj) :
   component_t(obj)
+{
+  /* nop */
+}
+
+
+
+transform_t::~transform_t()
 {
   /* nop */
 }
