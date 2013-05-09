@@ -8,14 +8,7 @@ game_object_t::~game_object_t()
 {
   for (unsigned id = 0; id < MAX_COMPONENT_IDS; ++id) {
     if (components_[id]) {
-      switch (id) {
-      case TRANSFORM_COMPONENT: remove_component<transform_t>(); break;
-      case PICK_UP_COMPONENT: break;
-      case DURABLE_COMPONENT: break;
-      case WEARABLE_COMPONENT: break;
-      case PROJECTILE_COMPONENT: break;
-      default: break;
-      }
+      delete component_handle_t::get(component_indices_[id]);
     }
   }
 }
