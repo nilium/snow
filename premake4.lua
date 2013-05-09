@@ -228,10 +228,13 @@ excludes { "src/script/*.cc" }
 configuration "no-server"
 excludes { "src/server/*.cc" }
 
-configuration "Release"
+configuration "release"
 defines { "NDEBUG" }
 
-configuration "Debug"
+configuration { "macosx", "release" }
+buildoptions { "-O3" }
+
+configuration "debug"
 defines { "DEBUG" }
 flags { "Symbols" }
 
