@@ -90,31 +90,8 @@ private:
   using locmap_t = std::unordered_map<uint64_t, resloc_t>;
   using str_inserter_t = std::back_insert_iterator<std::list<fileset_t::const_iterator>>;
 
-  template <typename T, typename... ARGS>
-  T *allocate_resource(uint64_t hash, ARGS&& ...args)
-  {
-    using res_type_t = res_store_t<T>;
-    res_type_t *store = (res_type_t *)pool_malloc(&pool_, sizeof(*store), 1);
-    if (!store) {
-      s_log_error("Unable to allocate memory for resource");
-      return nullptr;
-    }
-    uint64_t * hash_ptr = (uint64_t *)store;
-    hash_ptr[0] = hash;
-    T *obj = (T *)&hash_ptr[1];
-    new(obj) T(std::forward<ARGS>(args)...);
-    return obj;
-  }
-
-  template <typename T>
-  void destroy_resource(T *res)
-  {
-    using res_type_t = res_store_t<T>;
-    uint64_t *hash_ptr = ((uint64_t *)res) - 1;
-    resources_.erase(hash_ptr[0]);
-    res->~T();
-    pool_free((res_type_t *)hash_ptr);
-  }
+  template <typename T, typename... ARGS> T *allocate_resource(uint64_t hash, ARGS&& ...args);
+  template <typename T> void destroy_resource(T *res);
 
   rshader_t *load_shader(const string &path, unsigned kind);
   void release_shader(rshader_t *shader);
@@ -158,6 +135,36 @@ private:
   locmap_t res_files_;
   std::recursive_mutex lock_;
 };
+
+
+
+template <typename T, typename... ARGS>
+T *resources_t::allocate_resource(uint64_t hash, ARGS&& ...args)
+{
+  using res_type_t = res_store_t<T>;
+  res_type_t *store = (res_type_t *)pool_malloc(&pool_, sizeof(*store), 1);
+  if (!store) {
+    s_log_error("Unable to allocate memory for resource");
+    return nullptr;
+  }
+  uint64_t * hash_ptr = (uint64_t *)store;
+  hash_ptr[0] = hash;
+  T *obj = (T *)&hash_ptr[1];
+  new(obj) T(std::forward<ARGS>(args)...);
+  return obj;
+}
+
+
+
+template <typename T>
+void resources_t::destroy_resource(T *res)
+{
+  using res_type_t = res_store_t<T>;
+  uint64_t *hash_ptr = ((uint64_t *)res) - 1;
+  resources_.erase(hash_ptr[0]);
+  res->~T();
+  pool_free((res_type_t *)hash_ptr);
+}
 
 
 } // namespace snow
