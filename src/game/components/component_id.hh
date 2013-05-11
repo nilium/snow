@@ -8,6 +8,7 @@ namespace snow {
 enum component_id_t : unsigned
 {
   TRANSFORM_COMPONENT = 0,
+  LIGHT_COMPONENT,
   PICK_UP_COMPONENT,
   DURABLE_COMPONENT,
   WEARABLE_COMPONENT,
