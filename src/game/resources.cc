@@ -73,6 +73,14 @@ const uint64_t resources_t::frag_shader_seed = hash64("fragshader+");
 
 
 
+static resources_t g_default_resources;
+resources_t &resources_t::default_resources()
+{
+  return g_default_resources;
+}
+
+
+
 static bool read_token(tokiter_t &iter, const tokiter_t &end, token_kind_t kind)
 {
   if (iter != end && iter->kind == kind) {

@@ -42,6 +42,8 @@ struct resources_t
 
   void release_all();
 
+  static resources_t &default_resources();
+
 private:
 
   static const uint64_t font_seed;
