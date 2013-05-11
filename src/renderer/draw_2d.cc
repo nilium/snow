@@ -130,7 +130,7 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices
       set_proj = false;
     }
 
-    const int passes = cur_material->passes();
+    const int passes = cur_material->num_passes();
     for (int pass = 0; pass < passes; ++pass) {
       cur_material->prepare_pass(pass);
       GLvoid *offset = (GLvoid *)(ib_where + (current.base_index * sizeof(uint16_t)));
