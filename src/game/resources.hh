@@ -4,6 +4,7 @@
 #include "../config.hh"
 #include "../ext/lexer.hh"
 #include "../ext/memory_pool.hh"
+#include "../renderer/constants.hh"
 #include <snow/memory/ref_counter.hh>
 #include <mutex>
 #include <set>
@@ -19,30 +20,6 @@ struct rmaterial_t;
 struct rmaterial_basic_t;
 struct rprogram_t;
 struct rshader_t;
-
-
-enum : unsigned
-{
-  ATTRIB_POSITION,
-  ATTRIB_COLOR,
-  ATTRIB_TEXCOORD0,
-  ATTRIB_TEXCOORD1
-};
-
-
-enum : int
-{
-  UNIFORM_MODELVIEW = 0,
-  UNIFORM_PROJECTION,
-  UNIFORM_TEXTURE0,
-  UNIFORM_TEXTURE1,
-  UNIFORM_TEXTURE2,
-  UNIFORM_TEXTURE3,
-  UNIFORM_TEXTURE4,
-  UNIFORM_TEXTURE5,
-  UNIFORM_TEXTURE6,
-  UNIFORM_TEXTURE7
-};
 
 
 struct resources_t
