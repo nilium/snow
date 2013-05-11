@@ -1,9 +1,9 @@
 #include "resources.hh"
 #include <snow/data/hash.hh>
+#include "../data/resdef_parser.hh"
 #include "../data/database.hh"
 #include "../renderer/texture.hh"
 #include "../renderer/material.hh"
-#include "../renderer/material_basic.hh"
 #include "../renderer/program.hh"
 #include "../renderer/shader.hh"
 #include "../renderer/font.hh"
@@ -234,99 +234,7 @@ rtexture_t *resources_t::load_texture(const string &path, bool mipmaps)
 
 
 
-static bool read_mat_opening(tokiter_t &iter, const tokiter_t &end)
-{
-  return_error_if(false, !read_token_id(iter, end, "mat"),
-    "Unable to parse material: expected 'mat', got <%s>",
-    iter->descriptor().c_str())
-
-  return_error_if(false, iter == end || !iter->is_string(),
-    "Unable to parse material: expected string, got <%s>",
-    iter->descriptor().c_str());
-
-  ++iter;
-
-  return_error_if(false, !read_token(iter, end, TOK_CURL_OPEN),
-    "Unable to parse material: expected {, got <%s>",
-    iter->descriptor().c_str());
-
-  return true;
-}
-
-
-
-bool resources_t::read_mat_texture(rmaterial_basic_t *mat,
-  tokiter_t &iter, const tokiter_t &end)
-{
-  // Not an error if it's just not the right ID
-  if (!read_token_id(iter, end, "map")) {
-    return false;
-  }
-
-  return_error_if(false, iter == end,
-    "Expected texture path but source ended");
-  return_error_if(false, !iter->is_string(),
-    "Expected texture path but got %s", iter->descriptor().c_str());
-
-  const token_t &pathtok = *iter;
-  rtexture_t *tex = load_texture(pathtok.value);
-  ++iter;
-
-  return_error_if(false, !read_token(iter, end, TOK_SEMICOLON),
-    "Expected semicolon, token not found");
-  return_error_if(true, !tex,
-    "Unable to load texture '%s' for material", pathtok.value.c_str());
-
-  rtexture_t *old_tex = mat->texture();
-
-  mat->set_texture(tex);
-
-  if (old_tex != nullptr) {
-    s_log_warning("Texture redefined");
-    release_texture(old_tex);
-  }
-
-  return true;
-}
-
-
-
-bool resources_t::read_mat_shader(rmaterial_basic_t *mat,
-  tokiter_t &iter, const tokiter_t &end)
-{
-  if (!read_token_id(iter, end, "shader")) {
-    return false;
-  }
-
-  return_error_if(false, iter == end,
-    "Expected texture path but source ended");
-  return_error_if(false, !iter->is_string(),
-    "Expected texture path but got %s", iter->descriptor().c_str());
-
-  const token_t &pathtok = *iter;
-  rprogram_t *prog = load_program(pathtok.value);
-  ++iter;
-
-  return_error_if(false, !read_token(iter, end, TOK_SEMICOLON),
-    "Expected semicolon, token not found");
-  return_error_if(true, !prog,
-    "Unable to load program '%s' for material", pathtok.value.c_str());
-
-  rprogram_t *old_prog = mat->program();
-
-  mat->set_program(prog, UNIFORM_PROJECTION, UNIFORM_MODELVIEW, UNIFORM_TEXTURE0);
-
-  if (old_prog != nullptr) {
-    s_log_warning("Shader redefined");
-    release_program(old_prog);
-  }
-
-  return true;
-}
-
-
-
-bool resources_t::load_material_basic(rmaterial_basic_t *mat,
+bool resources_t::load_material_from(rmaterial_t *mat,
   const locmap_t::const_iterator &from)
 {
   string source;
@@ -344,27 +252,9 @@ bool resources_t::load_material_basic(rmaterial_basic_t *mat,
   lex.set_skip_newlines(true);
   lex.run(source);
 
-  bool texture_set = false;
-  bool closed = false;
-  const tokenlist_t &tokens = lex.tokens();
-  auto iter = tokens.cbegin();
-  auto end = tokens.cend();
-  if (!read_mat_opening(iter, end)) return false;
-  while (iter != end) {
-    if (read_mat_texture(mat, iter, end)) {
-      continue;
-    } else if (read_mat_shader(mat, iter, end)) {
-      continue;
-    } else if (read_token(iter, end, TOK_CURL_CLOSE)) {
-      closed = true;
-      break;
-    } else {
-      s_log_error("Unknown material property: %s", iter->value.c_str());
-      skip_through_semicolon(iter, end);
-    }
-  }
-
-  return iter == end && closed;
+  resdef_parser_t parser;
+  parser.set_tokens(lex.tokens());
+  return parser.read_material(*mat, *this) == PARSE_OK;
 }
 
 
@@ -389,13 +279,13 @@ rmaterial_t *resources_t::load_material(const string &name)
   }
 
   s_log_note("Allocating resource %x of kind material", hash);
-  rmaterial_basic_t *mat = allocate_resource<rmaterial_basic_t>(hash);
+  rmaterial_t *mat = allocate_resource<rmaterial_t>(hash);
   if (!mat) {
     s_log_error("Unable to allocate material '%s'", name.c_str());
     return nullptr;
   }
 
-  if (!load_material_basic(mat, matloc)) {
+  if (!load_material_from(mat, matloc)) {
     destroy_resource(mat);
     return nullptr;
   }
@@ -841,19 +731,21 @@ void resources_t::release_material(rmaterial_t *material)
 {
   rtexture_t *tex = nullptr;
   rprogram_t *prog = nullptr;
-  rmaterial_basic_t *bmat = (rmaterial_basic_t *)material;
   std::lock_guard<std::recursive_mutex> lock((lock_));
   if (refs_.release(material)) {
-    tex = bmat->texture();
-    if (tex) {
-      bmat->set_texture(nullptr);
-      release_texture(tex);
-    }
+    const size_t num_passes = material->num_passes();
+    for (size_t pass_index = 0; pass_index < num_passes; ++pass_index) {
+      rpass_t &pass = material->pass(pass_index);
+      for (size_t tex_index = 0; tex_index < rpass_t::MAX_TEXTURE_UNITS; ++tex_index) {
+        if (pass.textures[tex_index].texture) {
+          release_texture(pass.textures[tex_index].texture);
+          pass.textures[tex_index].texture = nullptr;
+        }
+      }
 
-    rprogram_t *program = bmat->program();
-    if (prog) {
-      bmat->set_program(nullptr);
-      release_program(prog);
+      if (pass.program) {
+        release_program(pass.program);
+      }
     }
 
     destroy_resource(material);
@@ -974,73 +866,42 @@ void resources_t::find_definition_files(const char *dir, str_inserter_t &inserte
 
 
 
-bool resources_t::skip_to_end_of_def(tokiter_t &iter, const tokiter_t &end)
-{
-  size_t depth = 0;
-  for (; iter != end; ++iter) {
-    if (iter->kind == TOK_CURL_CLOSE) {
-      --depth;
-      if (depth == 0) {
-        break;
-      }
-    } else if (iter->kind == TOK_CURL_OPEN) {
-      ++depth;
-    }
-  }
-
-  if (depth != 0) {
-    s_log_error("Unclosed { in definition");
-  }
-
-  return (depth == 0);
-}
-
-
-
 void resources_t::find_definitions_within(tokiter_t iter,
   const tokiter_t &end,
   const string::const_iterator &source_begin,
   const fileset_t::const_iterator &filepath)
 {
-  for (; iter != end; ++iter) {
-    uint64_t def_seed = material_seed;
-    const token_t &begin_tok = *iter;
+  resdef_parser_t parser;
+  parser.set_tokens(iter, end);
 
-    if (read_token_id(iter, end, "mat")) {
-      // nop
-    } else if (read_token_id(iter, end, "shader")) {
-      def_seed = program_seed;
-    } else {
-      s_log_error("[%d:%d] Unexpected token <%s>",
-        iter->pos.line, iter->pos.column, iter->descriptor().c_str());
-      break;
+  resdef_kind_t kind;
+  string name;
+  string::const_iterator from;
+  string::const_iterator to;
+  uint64_t hash;
+
+  while (!parser.eof()) {
+    if (parser.read_resource_def(kind, name, from, to) != PARSE_OK) {
+      continue;
     }
 
-    if (!iter->is_string()) {
-      s_log_error("[%d:%d] Expected name string, got <%s>",
-        iter->pos.line, iter->pos.column, iter->descriptor().c_str());
-      break;
+    switch (kind) {
+    case RESDEF_KIND_MATERIAL:  hash = hash64(name, material_seed); break;
+    case RESDEF_KIND_SHADER:    hash = hash64(name, program_seed); break;
+    default:
+      s_log_error("Error parsing material file: %s", parser.error().c_str());
+      continue;
     }
-
-    const token_t &nametok = *iter;
-
-    if (!skip_to_end_of_def(iter, end)) {
-      // Failed to find an entire definition
-      break;
-    }
-
-    const uint64_t hash = hash64(nametok.value, def_seed);
 
     const locmap_t::const_iterator existing = res_files_.find(hash);
     if (existing != res_files_.cend()) {
-      s_log_error("Material '%s' already exists, skipping redefinition",
-        nametok.value.c_str());
+      s_log_error("'%s' already defined, skipping redefinition", name.c_str());
       continue;
     }
 
     resloc_t loc = {
-      (size_t)std::distance(source_begin, begin_tok.from),
-      (size_t)std::distance(begin_tok.from, iter->to),
+      (size_t)(from - source_begin),
+      (size_t)(to - from),
       filepath
     };
 

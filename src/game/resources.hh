@@ -17,7 +17,6 @@ namespace snow {
 struct rfont_t;
 struct rtexture_t;
 struct rmaterial_t;
-struct rmaterial_basic_t;
 struct rprogram_t;
 struct rshader_t;
 
@@ -68,7 +67,7 @@ private:
     {
       rfont_t *font;
       rtexture_t *tex;
-      rmaterial_basic_t *mat;
+      rmaterial_t *mat;
       rprogram_t *prog;
       rshader_t *shader;
     };
@@ -104,13 +103,7 @@ private:
   // Finds definitions within a given file
   void find_definitions(const fileset_t::const_iterator &path);
   // Finds definitions given a list of tokens
-  void find_definitions_within(tokenlist_t::const_iterator iter,
-  const tokenlist_t::const_iterator &end,
-  const string::const_iterator &source_begin,
-  const fileset_t::const_iterator &filepath);
-  // Skips to the end of a definition in a token list
-  bool skip_to_end_of_def(tokenlist_t::const_iterator &iter,
-    const tokenlist_t::const_iterator &end);
+  void find_definitions_within(tokenlist_t::const_iterator iter, const tokenlist_t::const_iterator &end, const string::const_iterator &source_begin, const fileset_t::const_iterator &filepath);
 
   bool load_program_def(rprogram_t *prog, const locmap_t::const_iterator &from);
   bool read_program(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end);
@@ -120,12 +113,7 @@ private:
   bool read_program_frag_out(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end);
 
   // Parses the material given the location and lexer for use
-  bool load_material_basic(rmaterial_basic_t *mat, const locmap_t::const_iterator &from);
-  // Reads the material's 'map' property, return true if successful, false if there
-  // was an error or it just wasn't a map property. Continue on to the next property to try.
-  bool read_mat_texture(rmaterial_basic_t *, tokenlist_t::const_iterator &, const tokenlist_t::const_iterator &);
-  // Same as read_mat_texture, except reads the material's 'shader' property.
-  bool read_mat_shader(rmaterial_basic_t *, tokenlist_t::const_iterator &, const tokenlist_t::const_iterator &);
+  bool load_material_from(rmaterial_t *mat, const locmap_t::const_iterator &from);
 
   mempool_t pool_;
   fileset_t filepaths_;
