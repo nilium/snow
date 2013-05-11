@@ -1,4 +1,5 @@
 #include "gameobject.hh"
+#include "components/component.hh"
 
 
 namespace snow {
