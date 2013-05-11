@@ -37,6 +37,8 @@ using tokiter_t = typename tokenlist_t::const_iterator;
 const std::map<string, int> g_named_uniforms {
   { "modelview", UNIFORM_MODELVIEW },
   { "projection", UNIFORM_PROJECTION },
+  { "texture_matrix", UNIFORM_TEXTURE_MATRIX },
+  { "bones", UNIFORM_BONES },
   { "texture0", UNIFORM_TEXTURE0 },
   { "texture1", UNIFORM_TEXTURE1 },
   { "texture2", UNIFORM_TEXTURE2 },
@@ -51,8 +53,15 @@ const std::map<string, int> g_named_uniforms {
 const std::map<string, GLuint> g_named_attribs {
   { "position", ATTRIB_POSITION },
   { "color", ATTRIB_COLOR },
+  { "normals", ATTRIB_NORMAL },
+  { "binormals", ATTRIB_BINORMAL },
+  { "tangents", ATTRIB_TANGENT },
   { "texcoord0", ATTRIB_TEXCOORD0 },
   { "texcoord1", ATTRIB_TEXCOORD1 },
+  { "texcoord2", ATTRIB_TEXCOORD1 },
+  { "texcoord3", ATTRIB_TEXCOORD1 },
+  { "bone_weights", ATTRIB_BONE_WEIGHTS },
+  { "bone_indices", ATTRIB_BONE_INDICES },
 };
 
 
