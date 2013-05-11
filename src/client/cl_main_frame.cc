@@ -4,7 +4,7 @@
 #include "../renderer/gl_error.hh"
 #include "../renderer/font.hh"
 #include "../renderer/draw_2d.hh"
-#include "../renderer/material_basic.hh"
+#include "../renderer/material.hh"
 #include "../renderer/texture.hh"
 #include "../renderer/buffer.hh"
 #include "../renderer/program.hh"
@@ -338,10 +338,10 @@ void client_t::frameloop()
   rbuffer_t vertices(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 4096);
   rvertex_array_t vao = drawer.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vertices, 0);
 
-  rfont_t *font = res_.load_font("console");
+  rfont_t *font = res_->load_font("console");
   assert(font);
-  rmaterial_basic_t *mat = (rmaterial_basic_t *)res_.load_material("ui/console_font");
-  rmaterial_basic_t *bgmat = (rmaterial_basic_t *)res_.load_material("ui/console_back");
+  rmaterial_t *mat = res_->load_material("ui/console_font");
+  rmaterial_t *bgmat = res_->load_material("ui/console_back");
   font->set_font_page(0, mat);
   console.set_font(font);
   console.set_background(bgmat);
@@ -351,7 +351,6 @@ void client_t::frameloop()
 
   glClearColor(0.5, 0.5, 0.5, 1.0);
   glEnable(GL_BLEND);
-  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
   while (running_.load()) {
     int mousemode = -1;
@@ -405,7 +404,7 @@ void client_t::frameloop()
     }
   } // while (running)
 
-  res_.release_all();
+  res_->release_all();
   s_set_log_callback(nullptr, nullptr);
 
   glfwMakeContextCurrent(NULL);

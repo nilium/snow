@@ -148,7 +148,8 @@ void client_t::initialize(int argc, const char *argv[])
   }
 #endif
 
-  res_.prepare_resources();
+  res_ = &resources_t::default_resources();
+  res_->prepare_resources();
 
   // Launch frameloop thread
   s_log_note("Launching frameloop");

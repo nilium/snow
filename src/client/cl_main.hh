@@ -93,7 +93,7 @@ private:
   std::list<system_pair_t>  systems_ { };
   cvar_set_t                cvars_;
 
-  resources_t               res_;
+  resources_t *             res_;
 
   // CCMDS
   ccmd_t cmd_quit_;
