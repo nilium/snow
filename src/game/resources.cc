@@ -1055,8 +1055,6 @@ void resources_t::find_definitions(const fileset_t::const_iterator &path)
   s_log_note("Scanning '%s' for resources", path->c_str());
   string file_source;
   {
-    #define MAT_BUFF_LEN (256)
-    char temp_buff[MAT_BUFF_LEN];
     PHYSFS_sint64 len = 0;
     PHYSFS_File *file = PHYSFS_openRead(path->c_str());
 
@@ -1066,20 +1064,14 @@ void resources_t::find_definitions(const fileset_t::const_iterator &path)
     }
 
     len = PHYSFS_fileLength(file);
-    if (len < 0) {
+    if (len <= 0) {
       PHYSFS_close(file);
       s_log_error("Unable to determine length of file '%s'", path->c_str());
       return;
     }
 
-    file_source.reserve(len);
-    while (!PHYSFS_eof(file)) {
-      auto count = PHYSFS_readBytes(file, temp_buff, MAT_BUFF_LEN);
-      if (count > 0) {
-        file_source.append(temp_buff, count);
-      }
-    }
-
+    file_source.resize(len);
+    PHYSFS_readBytes(file, file_source.data(), len);
     PHYSFS_close(file);
   }
 
