@@ -58,16 +58,13 @@ stbi_io_callbacks &r_pfs_stb_io_callbacks()
 
 
 rtexture_t::rtexture_t(GLenum target) :
-  name_(0),
   target_(target)
 {
 }
 
 
 
-rtexture_t::rtexture_t() :
-  name_(0),
-  target_(GL_TEXTURE_2D)
+rtexture_t::rtexture_t()
 {
 }
 
@@ -75,7 +72,12 @@ rtexture_t::rtexture_t() :
 
 rtexture_t::rtexture_t(rtexture_t &&other) :
   name_(other.name_),
-  target_(other.target_)
+  target_(other.target_),
+  mag_filter_(other.mag_filter_),
+  min_filter_(other.min_filter_),
+  wrap_x_(other.wrap_x_),
+  wrap_y_(other.wrap_y_),
+  wrap_z_(other.wrap_z_)
 {
   other.zero();
 }
@@ -87,6 +89,11 @@ rtexture_t &rtexture_t::operator = (rtexture_t &&other)
   if (&other != this) {
     name_ = other.name_;
     target_ = other.target_;
+    mag_filter_ = other.mag_filter_;
+    min_filter_ = other.min_filter_;
+    wrap_x_ = other.wrap_x_;
+    wrap_y_ = other.wrap_y_;
+    wrap_z_ = other.wrap_z_;
     other.zero();
   }
   return *this;
@@ -102,12 +109,53 @@ rtexture_t::~rtexture_t()
 
 void rtexture_t::bind()
 {
-  if (!generated()) {
+  const bool set_parameters = !generated();
+  if (set_parameters) {
     glGenTextures(1, &name_);
     assert_gl("Generating texture object");
   }
 
   glBindTexture(target_, name_);
+
+  if (set_parameters) {
+    glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, mag_filter_);
+    glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, min_filter_);
+    glTexParameteri(target_, GL_TEXTURE_WRAP_S, wrap_x_);
+    glTexParameteri(target_, GL_TEXTURE_WRAP_T, wrap_y_);
+    glTexParameteri(target_, GL_TEXTURE_WRAP_R, wrap_z_);
+  }
+}
+
+
+
+void rtexture_t::set_filters(GLint mag_filter, GLint min_filter)
+{
+  if (mag_filter != mag_filter_) {
+    glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, mag_filter);
+    mag_filter_ = mag_filter;
+  }
+  if (min_filter != min_filter_) {
+    glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, min_filter);
+    min_filter_ = min_filter;
+  }
+}
+
+
+
+void rtexture_t::set_wrapping(GLint wrap_x, GLint wrap_y, GLint wrap_z)
+{
+  if (wrap_x != wrap_x_) {
+    glTexParameteri(target_, GL_TEXTURE_WRAP_S, wrap_x);
+    wrap_x_ = wrap_x;
+  }
+  if (wrap_y != wrap_y_) {
+    glTexParameteri(target_, GL_TEXTURE_WRAP_T, wrap_y);
+    wrap_y_ = wrap_y;
+  }
+  if (wrap_z != wrap_z_) {
+    glTexParameteri(target_, GL_TEXTURE_WRAP_R, wrap_z);
+    wrap_z_ = wrap_z;
+  }
 }
 
 
@@ -273,6 +321,11 @@ void rtexture_t::zero()
 {
   name_ = 0;
   target_ = GL_TEXTURE_2D;
+  mag_filter_ = GL_LINEAR;
+  min_filter_ = GL_LINEAR;
+  wrap_x_ = GL_REPEAT;
+  wrap_y_ = GL_REPEAT;
+  wrap_z_ = GL_REPEAT;
 }
 
 
@@ -322,19 +375,6 @@ bool load_texture_2d(const string &path, rtexture_t &tex,
 
   tex.set_target(GL_TEXTURE_2D);
   tex.bind();
-
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  assert_gl("Setting GL_TEXTURE_WRAP_S");
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  assert_gl("Setting GL_TEXTURE_WRAP_T");
-
-  if (gen_mipmaps)
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-  else
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-  assert_gl("Setting GL_TEXTURE_MIN_FILTER");
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-  assert_gl("Setting GL_TEXTURE_MAG_FILTER");
 
   tex.tex_image_2d(0, internal_format, width, height, internal_format,
     GL_UNSIGNED_BYTE, data);

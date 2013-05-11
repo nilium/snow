@@ -33,6 +33,9 @@ struct rtexture_t
     target_ = target;
   }
 
+  void set_filters(GLint mag_filter, GLint min_filter);
+  void set_wrapping(GLint wrap_x, GLint wrap_y, GLint wrap_z = GL_REPEAT);
+
   void unload();
 
   void tex_image_1d(GLint level, GLint internal_format, GLsizei width,
@@ -74,6 +77,11 @@ private:
   GLuint name_;
   GLenum target_;
   int width_, height_, depth_;
+  GLint mag_filter_ = GL_LINEAR;
+  GLint min_filter_ = GL_LINEAR;
+  GLint wrap_x_ = GL_REPEAT;
+  GLint wrap_y_ = GL_REPEAT;
+  GLint wrap_z_ = GL_REPEAT;
 };
 
 
