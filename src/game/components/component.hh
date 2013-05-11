@@ -22,7 +22,7 @@ struct component_base_t
 {
   component_base_t(); // nop ctor
   component_base_t(game_object_t *obj);
-  virtual ~component_base_t() = 0;
+  virtual ~component_base_t();
 
   game_object_t *game_object = nullptr;
 };
