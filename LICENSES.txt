@@ -4,6 +4,17 @@ The following libraries are used in the Snow Engine. The licensing terms
 for these libraries are provided below in no particular order:
 
 
+FLTK <http://www.fltk.org/>
+--------------------------------------------------------------------------------
+
+  This program is based in part on the fine work of the FLTK project
+  (http://www.fltk.org/).
+
+  FLTK is licensed under the GNU LGPL version 2 with a static linking exception.
+  Its license is not reproduced here, but can be read on the FLTK website at
+  <http://www.fltk.org/COPYING.php>.
+
+
 
 Lua → <http://www.lua.org>
 --------------------------------------------------------------------------------
