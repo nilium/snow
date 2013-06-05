@@ -308,22 +308,25 @@ end
 -- excludes { "src/main.cc" }
 
 -- TBB
-configuration {}
-local tbb_path = "/Users/ncower/source/tbb-4-1"
-if _OPTIONS["with-tbb"] then
-  tbb_path = _OPTIONS["with-tbb"]
+local build_with_tbb = false
+if build_with_tbb then
+  configuration {}
+  local tbb_path = "~/source/tbb-4-1"
+  if _OPTIONS["with-tbb"] then
+    tbb_path = _OPTIONS["with-tbb"]
+  end
+
+  libdirs { tbb_path .. "/lib" }
+  includedirs { tbb_path .. "/include" }
+
+  configuration "debug"
+  links { "tbb_debug" }
+  -- links { "tbbmalloc_debug" }
+
+  configuration "not debug"
+  links { "tbb" }
+  -- links { "tbbmalloc" }
 end
-
-libdirs { tbb_path .. "/lib" }
-includedirs { tbb_path .. "/include" }
-
-configuration "debug"
-links { "tbb_debug" }
--- links { "tbbmalloc_debug" }
-
-configuration "not debug"
-links { "tbb" }
--- links { "tbbmalloc" }
 
 -- pkg-config packages
 configuration {}
