@@ -57,7 +57,7 @@ bool event_queue_t::peek_event(event_t &out) const
 {
   bool set = false;
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   if (!events_.empty()) {
     out = events_.front();
@@ -72,7 +72,7 @@ bool event_queue_t::poll_event(event_t &out)
 {
   bool set = false;
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   if (!events_.empty()) {
     out = events_.front();
@@ -88,7 +88,7 @@ bool event_queue_t::poll_event_before(event_t &out, double time)
 {
   bool set = false;
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   if (!events_.empty()) {
     event_list_t::const_iterator iter;
@@ -121,7 +121,7 @@ void event_queue_t::emit_event(const event_t &event)
 {
   const event_t copy = event;
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   events_.push_back(copy);
   if (last_event_ == events_.cend()) {
@@ -135,7 +135,7 @@ void event_queue_t::emit_event(const event_t &event)
 void event_queue_t::set_frame_time(double time)
 {
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   frame_time_ = time;
 }
@@ -145,7 +145,7 @@ void event_queue_t::set_frame_time(double time)
 void event_queue_t::clear()
 {
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   events_.clear();
   last_event_ = events_.cend();
@@ -156,7 +156,7 @@ void event_queue_t::clear()
 auto event_queue_t::event_queue() const -> event_list_t
 {
 #if USE_LOCKED_EVENT_QUEUE
-  tbb::mutex::scoped_lock lock(lock_);
+  std::lock_guard<std::mutex> guard(lock_);
 #endif
   event_list_t copy;
   copy = events_;

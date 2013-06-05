@@ -7,10 +7,12 @@
 #include <list>
 #include <memory>
 #include <mutex>
-#include <tbb/mutex.h>
 
 
 namespace snow {
+
+
+#define USE_LOCKED_EVENT_QUEUE 1
 
 
 struct S_EXPORT event_queue_t
@@ -44,7 +46,7 @@ private:
   static void   ecb_window_iconify_event(GLFWwindow *window, int iconified);
 
 #if USE_LOCKED_EVENT_QUEUE
-  mutable tbb::mutex lock_;
+  mutable std::mutex lock_;
 #endif
   event_list_t      events_;
   double            last_time_ = 0;
