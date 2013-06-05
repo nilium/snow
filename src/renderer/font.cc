@@ -135,7 +135,7 @@ auto rfont_t::bbox_max() const -> const vec2f_t &
 
     Returns the number of font pages for this font.
 ==============================================================================*/
-int rfont_t::font_page_count() const
+size_t rfont_t::font_page_count() const
 {
   return pages_.size();
 }
@@ -179,7 +179,7 @@ void rfont_t::draw_text(
   rdraw_2d_t &draw,
   const vec2f_t &baseline,
   const string &text,
-  const vec4_t<uint8_t> &color,
+  const vec4f_t &color,
   bool ignore_newlines,
   float scale) const
 {
@@ -289,7 +289,7 @@ void rfont_t::load_from_db(database_t &db)
     dbstatement_t info_query = db.prepare(font_info_query_string);
     BAIL_IF_ERROR(db, "Preparing statement");
 
-    info_query.bind_text_static(":font_id", name_);
+    info_query.bind_text_copy(":font_id", name_);
     BAIL_IF_ERROR(db, "Setting font_id");
 
     for (dbresult_t &fir : info_query) {

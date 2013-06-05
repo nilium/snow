@@ -32,7 +32,7 @@ dbstatement_t::dbstatement_t(database_t &db, const string &sql) :
   column_names_()
 {
   const char *zsql = sql.c_str();
-  int num_bytes = sql.size();
+  const int num_bytes = (int)sql.size();
   int code = sqlite3_prepare_v2(db.db_, zsql, num_bytes, &stmt_, NULL);
   db_.check_error(code);
   if (code == SQLITE_OK) {
@@ -388,14 +388,14 @@ int dbstatement_t::bind_float(int index, float flt)
 
 int dbstatement_t::bind_text_copy(int index, const string &str)
 {
-  return bind_text(index, str.c_str(), str.size(), (free_fn_t)SQLITE_TRANSIENT);
+  return bind_text(index, str.c_str(), (int)str.size(), (free_fn_t)SQLITE_TRANSIENT);
 }
 
 
 
 int dbstatement_t::bind_text_static(int index, const string &str)
 {
-  return bind_text(index, str.c_str(), str.size(), (free_fn_t)SQLITE_STATIC);
+  return bind_text(index, str.c_str(), (int)str.size(), (free_fn_t)SQLITE_STATIC);
 }
 
 
@@ -413,14 +413,14 @@ int dbstatement_t::bind_float(const string &name, float flt)
 
 int dbstatement_t::bind_text_copy(const string &name, const string &str)
 {
-  return bind_text(name, str.c_str(), str.size(), (free_fn_t)SQLITE_TRANSIENT);
+  return bind_text(name, str.c_str(), (int)str.size(), (free_fn_t)SQLITE_TRANSIENT);
 }
 
 
 
 int dbstatement_t::bind_text_static(const string &name, const string &str)
 {
-  return bind_text(name, str.c_str(), str.size(), (free_fn_t)SQLITE_STATIC);
+  return bind_text(name, str.c_str(), (int)str.size(), (free_fn_t)SQLITE_STATIC);
 }
 
 

@@ -23,6 +23,7 @@ struct rshader_t;
 
 struct resources_t
 {
+  using nameset_t = std::set<string>;
 
   resources_t();
   ~resources_t();
@@ -34,6 +35,12 @@ struct resources_t
   rmaterial_t *load_material(const string &name);
   rprogram_t *load_program(const string &name);
 
+  const nameset_t &definition_names() const;
+  const nameset_t &definition_locations() const;
+
+  bool name_is_material(const string &name) const;
+  bool name_is_program(const string &name) const;
+
   void release_font(rfont_t *);
   void release_texture(rtexture_t *);
   void release_material(rmaterial_t *);
@@ -44,6 +51,8 @@ struct resources_t
   static resources_t &default_resources();
 
 private:
+
+  friend struct resdef_parser_t;
 
   static const uint64_t font_seed;
   static const uint64_t material_seed;
@@ -73,21 +82,21 @@ private:
     };
   };
 
-  using fileset_t = std::set<string>;
-
   struct resloc_t
   {
     size_t offset;
     size_t length;
-    fileset_t::const_iterator matfile;
+    unsigned kind; // resdef_kind_t
+    nameset_t::const_iterator resname;
+    nameset_t::const_iterator matfile;
   };
 
   using resmap_t = std::unordered_map<uint64_t, res_t>;
   template <typename T>
   using res_store_t = typename std::aligned_storage<sizeof(uint64_t) + sizeof(T)>::type;
-  using fontmap_t = std::unordered_map<uint64_t, fileset_t::const_iterator>;
+  using fontmap_t = std::unordered_map<uint64_t, nameset_t::const_iterator>;
   using locmap_t = std::unordered_map<uint64_t, resloc_t>;
-  using str_inserter_t = std::back_insert_iterator<std::list<fileset_t::const_iterator>>;
+  using str_inserter_t = std::back_insert_iterator<std::list<nameset_t::const_iterator>>;
 
   template <typename T, typename... ARGS> T *allocate_resource(uint64_t hash, ARGS&& ...args);
   template <typename T> void destroy_resource(T *res);
@@ -101,9 +110,9 @@ private:
   // Recursively searches for resource files under defs/
   void find_definition_files(const char *dir, str_inserter_t &inserter);
   // Finds definitions within a given file
-  void find_definitions(const fileset_t::const_iterator &path);
+  void find_definitions(const nameset_t::const_iterator &path);
   // Finds definitions given a list of tokens
-  void find_definitions_within(tokenlist_t::const_iterator iter, const tokenlist_t::const_iterator &end, const string::const_iterator &source_begin, const fileset_t::const_iterator &filepath);
+  void find_definitions_within(tokenlist_t::const_iterator iter, const tokenlist_t::const_iterator &end, const string::const_iterator &source_begin, const nameset_t::const_iterator &filepath);
 
   bool load_program_def(rprogram_t *prog, const locmap_t::const_iterator &from);
   bool read_program(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end);
@@ -116,12 +125,13 @@ private:
   bool load_material_from(rmaterial_t *mat, const locmap_t::const_iterator &from);
 
   mempool_t pool_;
-  fileset_t filepaths_;
+  nameset_t filepaths_;
+  nameset_t def_names_;
   ref_counter_t refs_;
   resmap_t resources_;
   fontmap_t font_dbs_;
   locmap_t res_files_;
-  std::recursive_mutex lock_;
+  mutable std::recursive_mutex lock_;
 };
 
 
@@ -130,7 +140,8 @@ template <typename T, typename... ARGS>
 T *resources_t::allocate_resource(uint64_t hash, ARGS&& ...args)
 {
   using res_type_t = res_store_t<T>;
-  res_type_t *store = (res_type_t *)pool_malloc(&pool_, sizeof(*store), 1);
+  res_type_t *store = new res_type_t;
+  // res_type_t *store = (res_type_t *)pool_malloc(&pool_, sizeof(*store), 1);
   if (!store) {
     s_log_error("Unable to allocate memory for resource");
     return nullptr;
@@ -151,7 +162,8 @@ void resources_t::destroy_resource(T *res)
   uint64_t *hash_ptr = ((uint64_t *)res) - 1;
   resources_.erase(hash_ptr[0]);
   res->~T();
-  pool_free((res_type_t *)hash_ptr);
+  // pool_free((res_type_t *)hash_ptr);
+  delete (res_type_t *)hash_ptr;
 }
 
 

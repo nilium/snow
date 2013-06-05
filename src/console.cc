@@ -11,20 +11,35 @@ namespace snow {
 namespace {
 
 
-#define CVAR_RESERVE_STORAGE (32)
+/*!
+  The default storage for cvar caches and string values. Should hold any
+  32-bit integer.
+*/
+#define CVAR_RESERVE_STORAGE (11)
 
 
+/*!
+  SQL statement to create the console_variables table if it doesn't already
+  exist in a DB.
+*/
 const string create_cvar_table_string {
   "CREATE IF NOT EXISTS console_variables "
   "(name AS TEXT UNIQUE OR REPLACE, value AS TEXT)"
 };
 
 
+/*!
+  Grabs a console variable's value from a DB by its name.
+*/
 const string cvar_single_query_string {
   "SELECT value FROM console_variables WHERE name = :name LIMIT 1"
 };
 
 
+/*!
+  Writes a console variable's value to a DB, either inserting it if it's new or
+  replacing the existing value of the variable.
+*/
 const string cvar_update_string {
   "INSERT OR REPLACE INTO console_variables (:name, :value)"
 };
@@ -40,11 +55,9 @@ using args_t = ccmd_t::args_t;
 *                                    cvar_t                                    *
 *******************************************************************************/
 
-/*==============================================================================
-  cvar_t(const string &name, int value, unsigned flags) :
-
-    Constructs a cvar with an initial integer value.
-==============================================================================*/
+/*!
+  \brief Constructs a cvar with an initial integer value.
+*/
 cvar_t::cvar_t(const string &name, int value, unsigned flags) :
   owner_(nullptr),
   hash_(hash32(name)),
@@ -62,11 +75,9 @@ cvar_t::cvar_t(const string &name, int value, unsigned flags) :
 
 
 
-/*==============================================================================
-  cvar_t(const string &name, float value, unsigned flags) :
-
-    Constructs a cvar with an initial float value.
-==============================================================================*/
+/*!
+  \brief Constructs a cvar with an initial float value.
+*/
 cvar_t::cvar_t(const string &name, float value, unsigned flags) :
   owner_(nullptr),
   hash_(hash32(name)),
@@ -82,11 +93,9 @@ cvar_t::cvar_t(const string &name, float value, unsigned flags) :
 
 
 
-/*==============================================================================
-  cvar_t(const string &name, const string &value, unsigned flags) :
-
-    Constructs a cvar with an initial string value.
-==============================================================================*/
+/*!
+  \brief Constructs a cvar with an initial string value.
+*/
 cvar_t::cvar_t(const string &name, const string &value, unsigned flags) :
   owner_(nullptr),
   hash_(hash32(name)),
@@ -102,11 +111,9 @@ cvar_t::cvar_t(const string &name, const string &value, unsigned flags) :
 
 
 
-/*==============================================================================
-  name() const
-
-    Gets the name of the cvar.
-==============================================================================*/
+/*!
+  \brief Gets the name of the cvar.
+*/
 const string &cvar_t::name() const
 {
   return name_;
@@ -114,11 +121,9 @@ const string &cvar_t::name() const
 
 
 
-/*==============================================================================
-  name_hash() const
-
-    Gets the name hash of the cvar.
-==============================================================================*/
+/*!
+  \brief Gets the name hash of the cvar.
+*/
 uint32_t cvar_t::name_hash() const
 {
   return hash_;
@@ -126,11 +131,9 @@ uint32_t cvar_t::name_hash() const
 
 
 
-/*==============================================================================
-  flags() const
-
-    Gets any flags associated with the cvar.
-==============================================================================*/
+/*!
+  \brief Gets any flags associated with the cvar.
+*/
 unsigned cvar_t::flags() const
 {
   return flags_;
@@ -138,11 +141,9 @@ unsigned cvar_t::flags() const
 
 
 
-/*==============================================================================
-  has_flags(unsigned flags) const
-
-    Tests if the cvar has a flag or a specific combination of flags.
-==============================================================================*/
+/*!
+  \brief Tests if the cvar has a flag or a specific combination of flags.
+*/
 bool cvar_t::has_flags(unsigned flags) const
 {
   return (flags_ & flags) == flags;
@@ -150,11 +151,12 @@ bool cvar_t::has_flags(unsigned flags) const
 
 
 
-/*==============================================================================
-  type() const
-
-    Returns the type of the cvar.
-==============================================================================*/
+/*!
+  \brief Returns the type of the cvar.
+  \see CVAR_INT
+  \see CVAR_STRING
+  \see CVAR_FLOAT
+*/
 int cvar_t::type() const
 {
   return flags_ & CVAR_TYPE_MASK;
@@ -162,12 +164,12 @@ int cvar_t::type() const
 
 
 
-/*==============================================================================
-  geti() const
+/*!
+  \brief Gets the float value of the cvar.
 
-    Gets the float value of the cvar. If a string that doesn't represent any
-    int value, the result will be zero.
-==============================================================================*/
+  If the cvar holds a string that doesn't represent any int value, the result
+  will be zero. The cvar's type will not change.
+*/
 int cvar_t::geti() const
 {
   return int_value_;
@@ -175,12 +177,12 @@ int cvar_t::geti() const
 
 
 
-/*==============================================================================
-  getf() const
+/*!
+  \brief Gets the float value of the cvar.
 
-    Gets the float value of the cvar. If a string that doesn't represent any
-    float value, the result will be zero.
-==============================================================================*/
+  If the cvar holds a string that doesn't represent any float value, the
+  result will be zero. The cvar's type will not change.
+*/
 float cvar_t::getf() const
 {
   return float_value_;
@@ -188,12 +190,12 @@ float cvar_t::getf() const
 
 
 
-/*==============================================================================
-  gets() const
+/*!
+  \brief Gets the string value of the cvar.
 
-    Gets the string value of the cvar. If the cvar is of a numeric type, it will
-    return a string version of that value.
-==============================================================================*/
+  If the cvar is of a numeric type, it will return a string version of that
+  value. The cvar's type will not change.
+*/
 const string &cvar_t::gets() const
 {
   return value_;
@@ -201,11 +203,10 @@ const string &cvar_t::gets() const
 
 
 
-/*==============================================================================
-  seti(int value)
-
-    Sets the cvar to an int value. Skips restriction flags.
-==============================================================================*/
+/*!
+  \brief Sets the cvar to an int value. Skips restriction flags.
+  \see seti_force()
+*/
 void cvar_t::seti(int value)
 {
   seti_force(value, true);
@@ -213,11 +214,10 @@ void cvar_t::seti(int value)
 
 
 
-/*==============================================================================
-  setf(float value)
-
-    Sets the cvar to a float value. Skips restriction flags.
-==============================================================================*/
+/*!
+  \brief Sets the cvar to a float value. Skips restriction flags.
+  \see setf_force()
+*/
 void cvar_t::setf(float value)
 {
   setf_force(value, true);
@@ -225,11 +225,10 @@ void cvar_t::setf(float value)
 
 
 
-/*==============================================================================
-  sets(const string &value)
-
-    Sets the cvar to a string value. Skips restriction flags.
-==============================================================================*/
+/*!
+  \brief Sets the cvar to a string value. Skips restriction flags.
+  \see sets_force()
+*/
 void cvar_t::sets(const string &value)
 {
   sets_force(value, true);
@@ -237,11 +236,15 @@ void cvar_t::sets(const string &value)
 
 
 
-/*==============================================================================
-  seti_force(int value, bool force)
+/*!
+  \brief Sets the cvar value to an int, optionally skipping flag checks.
 
-    Description
-==============================================================================*/
+  The cvar's type will be changed to CVAR_INT if it was not already an integer.
+
+  If `force` is true, the cvar's flags are not checked to see if the cvar is
+  modifiable. It will simply set the value of the cvar. \note The CVAR_DELAYED
+  flag is respected by this function.
+*/
 void cvar_t::seti_force(int value, bool force)
 {
 #if !NDEBUG
@@ -271,11 +274,15 @@ void cvar_t::seti_force(int value, bool force)
 
 
 
-/*==============================================================================
-  setf_force(float value, bool force)
+/*!
+  \brief Sets the cvar value to a float, optionally skipping flag checks.
 
-    Description
-==============================================================================*/
+  The cvar's type will be changed to CVAR_FLOAT if it was not already a float.
+
+  If `force` is true, the cvar's flags are not checked to see if the cvar is
+  modifiable. It will simply set the value of the cvar. \note The CVAR_DELAYED
+  flag is respected by this function.
+*/
 void cvar_t::setf_force(float value, bool force)
 {
 #if !NDEBUG
@@ -305,11 +312,15 @@ void cvar_t::setf_force(float value, bool force)
 
 
 
-/*==============================================================================
-  sets_force(const string &value, bool force)
+/*!
+  \brief Sets the cvar value to a string, optionally skipping flag checks.
 
-    Description
-==============================================================================*/
+  The cvar's type will be changed to CVAR_STRING if it was not already a string.
+
+  If `force` is true, the cvar's flags are not checked to see if the cvar is
+  modifiable. It will simply set the value of the cvar. \note The CVAR_DELAYED
+  flag is respected by this function.
+*/
 void cvar_t::sets_force(const string &value, bool force)
 {
 #if !NDEBUG
@@ -339,11 +350,9 @@ void cvar_t::sets_force(const string &value, bool force)
 
 
 
-/*==============================================================================
-  revoke_changes()
-
-    Description
-==============================================================================*/
+/*!
+  \brief Description
+*/
 void cvar_t::revoke_changes()
 {
   if (has_flags(CVAR_HAS_CACHE)) {
@@ -357,11 +366,9 @@ void cvar_t::revoke_changes()
 
 
 
-/*==============================================================================
-  can_modify() const
-
-    Description
-==============================================================================*/
+/*!
+  \brief Description
+*/
 bool cvar_t::can_modify() const
 {
   const char *namez = name_.c_str();
@@ -392,11 +399,9 @@ bool cvar_t::can_modify() const
 
 
 
-/*==============================================================================
-  update()
-
-    Description
-==============================================================================*/
+/*!
+  \brief Description
+*/
 void cvar_t::update()
 {
   if (has_flags(CVAR_HAS_CACHE)) {
@@ -599,6 +604,8 @@ void cvar_set_t::read_cvars(database_t &db)
 
 
 
+/*! Tries to find a cvar with the given name, returns it if it exists. Returns
+nullptr otherwise. */
 cvar_t *cvar_set_t::get_cvar(const string &name) const
 {
   return get_cvar(hash32(name));
@@ -606,6 +613,8 @@ cvar_t *cvar_set_t::get_cvar(const string &name) const
 
 
 
+/*! Tries to find a cvar with the given hash, returns it if it exists.
+Otherwise, returns nullptr. */
 cvar_t *cvar_set_t::get_cvar(uint32_t hash) const
 {
   auto iter = cvars_.find(hash);
@@ -617,6 +626,14 @@ cvar_t *cvar_set_t::get_cvar(uint32_t hash) const
 
 
 
+/*!
+  \brief Tries to find a cvar with the given name, returns it if it exists.
+
+  If it doesn't exist, a new cvar will be created with the provided
+  default_value and default_flags and registered in the cvar set.
+
+  \see cvar_t::cvar_t()
+*/
 cvar_t *cvar_set_t::get_cvar(const string &name, const string &default_value,
                              int default_flags)
 {
@@ -632,6 +649,7 @@ cvar_t *cvar_set_t::get_cvar(const string &name, const string &default_value,
 
 
 
+/*! \see get_cvar(const string &name, const string &default_value, int default_flags) */
 cvar_t *cvar_set_t::get_cvar(const string &name, int default_value,
                              int default_flags)
 {
@@ -647,6 +665,7 @@ cvar_t *cvar_set_t::get_cvar(const string &name, int default_value,
 
 
 
+/*! \see get_cvar(const string &name, const string &default_value, int default_flags) */
 cvar_t *cvar_set_t::get_cvar(const string &name, float default_value,
                              int default_flags)
 {
@@ -662,6 +681,15 @@ cvar_t *cvar_set_t::get_cvar(const string &name, float default_value,
 
 
 
+/*!
+    \brief Allocates a cvar using an internal vector of cvars and returns it.
+
+    This does not register the cvar in the cvar_set_t, though the pointer to
+    the returned cvar will be invalid either after the cvar set's destruction
+    or after clear() is called.
+
+    \see cvar_t::cvar_t()
+  */
 cvar_t *cvar_set_t::make_cvar(const string &name, int value, unsigned flags)
 {
   if (temp_cvars_.size() + 1 > temp_cvars_.capacity()) {
@@ -675,6 +703,7 @@ cvar_t *cvar_set_t::make_cvar(const string &name, int value, unsigned flags)
 
 
 
+/*! \see make_cvar(const string &, int, unsigned) */
 cvar_t *cvar_set_t::make_cvar(const string &name, float value, unsigned flags)
 {
   if (temp_cvars_.size() + 1 > temp_cvars_.capacity()) {
@@ -688,6 +717,7 @@ cvar_t *cvar_set_t::make_cvar(const string &name, float value, unsigned flags)
 
 
 
+/*! \see make_cvar(const string &, int, unsigned) */
 cvar_t *cvar_set_t::make_cvar(const string &name, const string &value, unsigned flags)
 {
   if (temp_cvars_.size() + 1 > temp_cvars_.capacity()) {
@@ -701,6 +731,12 @@ cvar_t *cvar_set_t::make_cvar(const string &name, const string &value, unsigned 
 
 
 
+/*!
+  \brief Adds an existing cvar to the cvar set.
+
+  This cvar should not be shared with other cvar sets. This does not copy the
+  cvar, it keeps the address in its internal map.
+*/
 bool cvar_set_t::register_cvar(cvar_t *cvar)
 {
   auto namehash = cvar->hash_;
@@ -721,6 +757,7 @@ bool cvar_set_t::register_cvar(cvar_t *cvar)
 
 
 
+/*! \brief Removes an existing cvar from the cvar set. */
 bool cvar_set_t::unregister_cvar(cvar_t *cvar)
 {
   auto namehash = cvar->hash_;
@@ -737,6 +774,7 @@ bool cvar_set_t::unregister_cvar(cvar_t *cvar)
 
 
 
+/*! \brief For all cvars with the CVAR_DELAYED flag, updates their values. */
 void cvar_set_t::update_cvars()
 {
   if (!update_cvars_.empty()) {
@@ -749,6 +787,7 @@ void cvar_set_t::update_cvars()
 
 
 
+/*! \brief Adds a console command to the cvar set. Only useful for execute(). */
 bool cvar_set_t::register_ccmd(ccmd_t *ccmd)
 {
   auto namehash = ccmd->hash_;
@@ -769,6 +808,7 @@ bool cvar_set_t::register_ccmd(ccmd_t *ccmd)
 
 
 
+/*! \brief Removes a console command from the cvar set. */
 bool cvar_set_t::unregister_ccmd(ccmd_t *ccmd)
 {
   auto namehash = ccmd->hash_;
@@ -785,6 +825,22 @@ bool cvar_set_t::unregister_ccmd(ccmd_t *ccmd)
 
 
 
+/*! \brief Executes a space-separated command against the cvar set.
+
+This function will do one of three things with a valid command:
+
+1. If the first name in the string is a ccmd's name, it will call the ccmd
+with any further words in the string as arguments, passing them as a list.
+There may be no arguments.
+2. If the string contains only a single name, no arguments, and the name is
+that of a cvar, it will log the value of the cvar.
+3. If the string is a name, has arguments, and the name is that of a cvar, it
+will attempt to assign the first argument in the string (excluding the name)
+to the cvar, keeping `force` checks in mind.
+
+\param force Whether to force assignment of cvars in the case of a cvar
+assignment. See cvar_t::seti_force for more information.
+*/
 void cvar_set_t::execute(const string &command, bool force)
 {
   if (command.empty()) {
@@ -837,6 +893,7 @@ void cvar_set_t::execute(const string &command, bool force)
 
 
 
+/*! Gets a console command with the given name. Returns it if found, nullptr otherwise. */
 ccmd_t *cvar_set_t::get_ccmd(const string &name) const
 {
   return get_ccmd(hash32(name));
@@ -844,6 +901,7 @@ ccmd_t *cvar_set_t::get_ccmd(const string &name) const
 
 
 
+/*! Same as get_cmmd(const string &name), but takes a hash instead of the string name. */
 ccmd_t *cvar_set_t::get_ccmd(uint32_t hash) const
 {
   auto iter = cvars_.find(hash);
@@ -855,6 +913,14 @@ ccmd_t *cvar_set_t::get_ccmd(uint32_t hash) const
 
 
 
+/*!
+  \brief Calls the given console command, if it exists, with the given
+  argument string.
+
+  This is essentially a convenience function for getting the ccmd by name and
+  calling it. Returns true if the ccmd was called (regardless of whether the
+  ccmd was successful or not).
+*/
 bool cvar_set_t::call_ccmd(const string &name, const args_t &args)
 {
   ccmd_t *cmd = get_ccmd(name);
@@ -868,6 +934,7 @@ bool cvar_set_t::call_ccmd(const string &name, const args_t &args)
 
 
 
+/*! Clears both cvars and ccmds from the set */
 void cvar_set_t::clear()
 {
   // force any cvars that haven't been updated to be.. updated.
@@ -879,6 +946,7 @@ void cvar_set_t::clear()
 
 
 
+/*! Returns a const iterator to the beginning of the list of modified cvars */
 auto cvar_set_t::modified_cbegin() const -> ptr_list_t::const_iterator
 {
   return update_cvars_.cbegin();
@@ -886,6 +954,7 @@ auto cvar_set_t::modified_cbegin() const -> ptr_list_t::const_iterator
 
 
 
+/*! Returns a const iterator to after the end of the list of modified cvars */
 auto cvar_set_t::modified_cend() const -> ptr_list_t::const_iterator
 {
   return update_cvars_.cend();

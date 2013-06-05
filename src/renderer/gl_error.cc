@@ -53,7 +53,7 @@ void sn_assert_gl__(const char *msg, size_t line, const char *file, const char *
     throw gl_error_t(error_str, error);
     #else
     std::clog << what_with_error(error_str, error) << std::endl;
-    exit(1);
+    std::abort();
     #endif
   }
 }

@@ -58,13 +58,17 @@ struct parser_t
   // float (whichever is requested), the result is implicitly converted.
   // True is converted to 1, false is converted to 0. Null is an invalid value.
   int read_float(float &value);
+  int read_float();
   int read_integer(int &value);
+  int read_integer();
   // true, false; if a number, != 0 is true, == 0 is false. null is an invalid
   // bool value.
   int read_bool(bool &value);
+  int read_bool();
   // Requires a string literal. If the null keyword is encountered, the output
   // string is empty. Numbers will not be implicitly converted to strings.
   int read_string(string &value);
+  int read_string();
   // Reads the next token if it is of the kind requested and, if provided, if
   // the token has a specific text value. read_keyword is the same as this, but
   // forces TOK_ID as the token kind.

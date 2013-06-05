@@ -24,6 +24,8 @@ struct S_EXPORT rvertex_array_t
   // function is set to nullptr.
   void          unload();
 
+  bool          generated() const { return name_ != 0; }
+
 private:
   void          zero();
   void          force_load();

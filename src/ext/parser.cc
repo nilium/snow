@@ -135,6 +135,14 @@ int parser_t::read_float(float &value)
 
 
 
+int parser_t::read_float()
+{
+  float temp = 0;
+  return read_float(temp);
+}
+
+
+
 int parser_t::read_integer(int &value)
 {
   if (iter_ == end_) {
@@ -165,6 +173,14 @@ int parser_t::read_integer(int &value)
     skip_whitespace();
   }
   return PARSE_OK;
+}
+
+
+
+int parser_t::read_integer()
+{
+  int temp = 0;
+  return read_integer(temp);
 }
 
 
@@ -203,6 +219,14 @@ int parser_t::read_bool(bool &value)
 
 
 
+int parser_t::read_bool()
+{
+  bool temp = 0;
+  return read_bool(temp);
+}
+
+
+
 int parser_t::read_string(string &value)
 {
   if (iter_ == end_) {
@@ -222,6 +246,30 @@ int parser_t::read_string(string &value)
     return PARSE_NO_MATCH;
   }
   ++iter_;
+  if (skip_ws_on_read_ && iter_ != end_) {
+    skip_whitespace();
+  }
+  return PARSE_OK;
+}
+
+
+
+int parser_t::read_string()
+{
+  if (iter_ == end_) {
+    set_error("No more tokens to read from the token list");
+    return PARSE_END_OF_TOKENS;
+  }
+  switch (iter_->kind) {
+  case TOK_NULL_KW:
+  case TOK_SINGLE_STRING_LIT:
+  case TOK_DOUBLE_STRING_LIT:
+    ++iter_;
+    break;
+  default:
+    set_error("Token is not a string or null");
+    return PARSE_NO_MATCH;
+  }
   if (skip_ws_on_read_ && iter_ != end_) {
     skip_whitespace();
   }

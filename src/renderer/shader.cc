@@ -84,17 +84,12 @@ bool rshader_t::compile()
 
   if (compile_status != GL_TRUE) {
     GLint log_length = 0;
-    std::vector<GLchar> log_temp;
 
     glGetShaderiv(shader_, GL_INFO_LOG_LENGTH, &log_length);
     assert_gl("Getting shader info log length");
-
-    log_temp.resize(log_length);
-
-    glGetShaderInfoLog(shader_, log_length, NULL, log_temp.data());
+    error_str_.resize(log_length);
+    glGetShaderInfoLog(shader_, log_length, NULL, error_str_.data());
     assert_gl("Getting shader info log string");
-
-    error_str_ = string((const char *)log_temp.data(), log_length);
   }
 
   compiled_ = (compile_status == GL_TRUE);

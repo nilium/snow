@@ -1,6 +1,9 @@
 #include "cl_main.hh"
 #include "../game/system.hh"
+#include "../game/gameobject.hh"
 #include "../game/console_pane.hh"
+#include "../game/systems/player.hh"
+#include "../game/components/player_mover.hh"
 #include "../renderer/gl_error.hh"
 #include "../renderer/font.hh"
 #include "../renderer/draw_2d.hh"
@@ -14,6 +17,7 @@
 #include "../timing.hh"
 #include <thread>
 #include <physfs.h>
+#include "../ext/fltk.h"
 
 
 namespace snow {
@@ -41,99 +45,14 @@ enum : int {
 
 
 
-struct esc_system_t : system_t
-{
-  esc_system_t(cvar_t *willQuit) :
-    cl_willQuit_(willQuit)
-  {
-    // nop
-  }
-
-  virtual bool event(const event_t &event)
-  {
-    if (event.kind == KEY_EVENT && event.key.button == GLFW_KEY_PAUSE) {
-      will_quit_ = true;
-      return true;
-    } else if (event.kind == NET_EVENT) {
-      s_log_note("Net event: %d %d %f",
-        event.net->sender(), event.net->message(), event.net->time());
-      return true;
-    } else {
-      return false;
-    }
-  }
-
-  virtual void frame(double step, double timeslice)
-  {
-    if (will_quit_) {
-      s_log_note("Should quit");
-      cl_willQuit_->seti(1);
-    }
-  }
-
-private:
-  cvar_t *cl_willQuit_ = nullptr;
-  bool will_quit_ = false;
-};
-
-
-
-const std::chrono::milliseconds &cl_frameloop_sleep_duration();
+std::chrono::milliseconds cl_frameloop_sleep_duration();
 void cl_poll_events(void *ctx);
 
 
 
-const std::chrono::milliseconds &cl_frameloop_sleep_duration()
+std::chrono::milliseconds cl_frameloop_sleep_duration()
 {
-  static std::chrono::milliseconds sleep_duration(10);
-  return sleep_duration;
-}
-
-
-
-rshader_t load_shader(GLenum kind, const string &path)
-{
-  auto file = PHYSFS_openRead(path.c_str());
-  if (!file) {
-    s_throw(std::runtime_error, "Cannot open file %s", path.c_str());
-  }
-
-  auto size = PHYSFS_fileLength(file);
-  std::vector<char> filebuf(size);
-  PHYSFS_readBytes(file, filebuf.data(), size);
-  PHYSFS_close(file);
-
-  rshader_t shader(kind);
-  shader.load_source(string(filebuf.data(), filebuf.size()));
-
-  if (!shader.compile()) {
-    s_throw(std::runtime_error, "Couldn't compile shader: %s", shader.error_string().c_str());
-  }
-
-  return shader;
-}
-
-
-
-bool build_program(rprogram_t &program, const rshader_t &vertex, const rshader_t &frag)
-{
-  program.bind_uniform(0, "modelview");
-  program.bind_uniform(1, "projection");
-  program.bind_uniform(2, "diffuse");
-  program.bind_attrib(0, "position");
-  program.bind_attrib(1, "texcoord");
-  program.bind_attrib(2, "color");
-  program.bind_frag_out(0, "frag_color");
-
-  program.attach_shader(vertex);
-  program.attach_shader(frag);
-
-  if (!program.link()) {
-    s_throw(std::runtime_error, "Couldn't link program: %s", program.error_string().c_str());
-    return false;
-  }
-
-  return true;
+  return std::chrono::milliseconds(16);
 }
 
 
@@ -146,7 +65,13 @@ bool build_program(rprogram_t &program, const rshader_t &vertex, const rshader_t
 void cl_poll_events(void *ctx)
 {
   (void)ctx;
+#define USE_FLTK_EVENT_POLLING 1
+#if USE_FLTK_EVENT_POLLING
+  while (Fl::wait(0) > 0)
+    ;
+#else
   glfwPollEvents();
+#endif
 }
 
 
@@ -221,7 +146,7 @@ void client_t::read_events(double timeslice)
   }
 #endif
 
-  glfwPollEvents();
+  cl_poll_events(nullptr);
 
 #ifndef NDEBUG
   input_time = glfwGetTime() - input_time;
@@ -236,10 +161,9 @@ void client_t::read_events(double timeslice)
   auto sys_begin = systems_.cbegin();
   while (event_queue_.poll_event(event)) {
     switch (event.kind) {
-      case WINDOW_FOCUS_EVENT: {
+      case WINDOW_FOCUS_EVENT:
         wnd_focused->seti(event.focused);
-        continue;
-      }
+        // fall-through
 
       default: {
         auto sys_iter = sys_begin;
@@ -301,19 +225,47 @@ void client_t::run_frameloop()
 ==============================================================================*/
 void client_t::frameloop()
 {
+  // (new Fl_Pack(2, 2, 196, 196, "Surface Properties"))->type(Fl_Pack::VERTICAL);
+  #define STEPPER_WIDTH 56
+  #define STEPPER_HEIGHT 24
+  #define OFFSET_STEP_LABEL_WIDTH 64
+  #define OFFSET_STEP_X OFFSET_STEP_LABEL_WIDTH
+  #define STEP_STEP_LABEL_WIDTH 48
+  #define STEP_STEP_X OFFSET_STEP_X + STEPPER_WIDTH + STEP_STEP_LABEL_WIDTH
+  Fl_Window *flwindow = new Fl_Window(STEP_STEP_X + STEPPER_WIDTH + 4 + 8, 500);
+  Fl_Group *group = new Fl_Group(4, 20, STEP_STEP_X + STEPPER_WIDTH + 4, 4 + 4 * (STEPPER_HEIGHT + 4), "Surface Properties");
+  group->box(FL_UP_FRAME);
+  const char *offname[] = {
+    "X Offset",
+    "Y Offset",
+    "X Scale",
+    "Y Scale",
+  };
+  for (int x = 0; x < 4; ++x) {
+    // Fl_Pack *pack = new Fl_Pack(2, 2, 196, 24, "Surface Properties");
+    // pack->type(Fl_Pack::HORIZONTAL);
+
+    Fl_Spinner *off = new Fl_Spinner(OFFSET_STEP_X, 24 + x * (STEPPER_HEIGHT + 4), STEPPER_WIDTH, STEPPER_HEIGHT, offname[x]);
+    Fl_Spinner *step = new Fl_Spinner(STEP_STEP_X, 24 + x * (STEPPER_HEIGHT + 4), STEPPER_WIDTH, STEPPER_HEIGHT, "Step");
+    // pack->end();
+  }
+
+  flwindow->end();
+  flwindow->show();
+
   console_pane_t &console = default_console();
   s_set_log_callback(cl_log_callback, &console);
 
+  player_t psystem_t;
   cvars_.clear();
 
   cvars_.register_ccmd(&cmd_quit_);
   cl_willQuit = cvars_.get_cvar( "cl_willQuit", 0, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
   wnd_focused = cvars_.get_cvar( "wnd_focused", 1, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
-  wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", false, CVAR_DELAYED | CVAR_INVISIBLE);
+  wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", true, CVAR_DELAYED | CVAR_INVISIBLE);
   r_drawFrame = cvars_.get_cvar( "r_drawFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
 
-  esc_system_t debug_sys(cl_willQuit);
-  add_system(&debug_sys);
+  add_system(&psystem_t);
 
   console.set_cvar_set(&cvars_);
 
@@ -336,24 +288,34 @@ void client_t::frameloop()
   rdraw_2d_t drawer;
   rbuffer_t indices(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 2048);
   rbuffer_t vertices(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 4096);
-  rvertex_array_t vao = drawer.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vertices, 0);
+  rvertex_array_t vao;
 
   rfont_t *font = res_->load_font("console");
   assert(font);
   rmaterial_t *mat = res_->load_material("ui/console_font");
+  rmaterial_t *pmat = res_->load_material("actors/player");
   rmaterial_t *bgmat = res_->load_material("ui/console_back");
   font->set_font_page(0, mat);
   console.set_font(font);
   console.set_background(bgmat);
   console.set_drawer(&drawer);
 
-  add_system(&console);
+  add_system(&console, 65536);
 
   glClearColor(0.5, 0.5, 0.5, 1.0);
   glEnable(GL_BLEND);
 
+  game_object_t *player = new game_object_t();
+  player->add_component<player_mover_t>();
+
+  for (auto &syspair : systems_) {
+    s_log_note("%d %x", syspair.first, syspair.second);
+  }
+
   while (running_.load()) {
+#if HIDE_CURSOR_ON_CONSOLE_CLOSE
     int mousemode = -1;
+#endif
 
     // Do any frames that would have passed since the last rendering point
     const double cur_time = glfwGetTime() - base_time_;
@@ -363,19 +325,29 @@ void client_t::frameloop()
       read_events(sim_time_);
       do_frame(FRAME_SEQ_TIME, sim_time_);
 
+#if HIDE_CURSOR_ON_CONSOLE_CLOSE
       if (wnd_mouseMode->has_flags(CVAR_MODIFIED)) {
         wnd_mouseMode->update();
         mousemode = wnd_mouseMode->geti();
       }
+#endif
 
       cvars_.update_cvars();
     }
 
+#if HIDE_CURSOR_ON_CONSOLE_CLOSE
     switch (mousemode) {
-    case 0: glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN); break;
-    case 1: glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL); break;
+    case 0:
+      glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN);
+      glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
+      break;
+    case 1:
+      glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
+      glfwSetInputMode(window, GLFW_STICKY_KEYS, 0);
+      break;
     default: break;
     }
+#endif
 
     if (frame != last_frame && r_drawFrame->geti()) {
       last_frame = frame;
@@ -388,9 +360,15 @@ void client_t::frameloop()
         }
       }
 
+      drawer.draw_rect({400, 300}, {400, 300}, {1.0, 1.0, 0, 1.0}, pmat);
       drawer.buffer_vertices(vertices, 0);
       drawer.buffer_indices(indices, 0);
-      drawer.draw_with_vertex_array(vao, indices, 0);
+
+      if (!vao.generated()) {
+        vao = drawer.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vertices, 0, indices);
+      }
+
+      drawer.draw_with_vertex_array(vao, 0);
 
       glfwSwapBuffers(window);
 
@@ -404,8 +382,11 @@ void client_t::frameloop()
     }
   } // while (running)
 
-  res_->release_all();
   s_set_log_callback(nullptr, nullptr);
+
+  res_->release_all();
+
+  delete player;
 
   glfwMakeContextCurrent(NULL);
 } // frameloop

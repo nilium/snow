@@ -15,6 +15,11 @@ struct rshader_t;
 
 struct S_EXPORT rprogram_t
 {
+  using name_set_t    = std::set<string>;
+  using uniform_loc_t = std::pair<GLint, name_set_t::const_iterator>;
+  using uniforms_t    = std::map<int, uniform_loc_t>;
+
+
   rprogram_t();
   rprogram_t(rprogram_t &&shader);
   rprogram_t &operator = (rprogram_t &&shader);
@@ -67,10 +72,11 @@ struct S_EXPORT rprogram_t
   inline bool     has_error() const { return error_str_.size() != 0; }
   inline string   error_string() const { return error_str_; }
 
+  const uniforms_t &bound_uniforms() const { return uniforms_; }
+
+
+
 private:
-  using name_set_t    = std::set<string>;
-  using uniform_loc_t = std::pair<GLint, name_set_t::const_iterator>;
-  using uniforms_t    = std::map<int, uniform_loc_t>;
 
   S_HIDDEN
   void            zero();

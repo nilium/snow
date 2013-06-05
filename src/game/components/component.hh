@@ -11,6 +11,19 @@
 namespace snow {
 
 
+#define DECL_COMPONENT_CTOR_DTOR(CLASSNAME)                                   \
+CLASSNAME ();                                                                 \
+CLASSNAME (game_object_t *);                                                  \
+virtual ~CLASSNAME ();                                                        \
+static constexpr const char *COMPONENT_NAME = #CLASSNAME
+
+
+#define DEFINE_COMPONENT_CTOR_DTOR(CLASSNAME)                                 \
+CLASSNAME :: CLASSNAME () {}                                                  \
+CLASSNAME :: CLASSNAME (game_object_t *obj__) : component_t(obj__) {}         \
+CLASSNAME :: ~CLASSNAME () {}
+
+
 /* Default maximum storage reserved for any component type */
 enum : size_t { MAX_COMPONENT_STORAGE = 8192 };
 
@@ -22,7 +35,7 @@ struct component_base_t
 {
   component_base_t(); // nop ctor
   component_base_t(game_object_t *obj);
-  virtual ~component_base_t();
+  virtual ~component_base_t() = 0;
 
   game_object_t *game_object = nullptr;
 };

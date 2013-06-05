@@ -13,110 +13,46 @@
 
 #define MAX_PATH_LEN (512)
 #define RES_POOL_SIZE (128 * 1024 * 1024) /* 128mb */
-#define RES_OBJECT(PTR) ( ( (uint64_t *)( (PTR) ) ) + 1 )
-#define RES_HASH(PTR) ( ( (uint64_t *)( (PTR) ) ) [-1] )
 #define throw_unless_kind(V_, KIND_, NAME_)                                    \
   if ((V_) != KIND_) {                                                         \
     s_throw(std::runtime_error, "Resource '%s' (%0x) is not of type " #KIND_,  \
       (NAME_).c_str(), hash);                                                  \
   }
 
-#define return_error_if(VAL, COND, MESSAGE, ARGS...)                           \
-  if ((COND)) {                                                                \
-    s_log_error(MESSAGE, ##ARGS);                                              \
-    return (VAL);                                                              \
-  }
-
 
 namespace snow {
+
+
+namespace {
 
 
 using tokiter_t = typename tokenlist_t::const_iterator;
 
 
-const std::map<string, int> g_named_uniforms {
-  { "modelview", UNIFORM_MODELVIEW },
-  { "projection", UNIFORM_PROJECTION },
-  { "texture_matrix", UNIFORM_TEXTURE_MATRIX },
-  { "bones", UNIFORM_BONES },
-  { "texture0", UNIFORM_TEXTURE0 },
-  { "texture1", UNIFORM_TEXTURE1 },
-  { "texture2", UNIFORM_TEXTURE2 },
-  { "texture3", UNIFORM_TEXTURE3 },
-  { "texture4", UNIFORM_TEXTURE4 },
-  { "texture5", UNIFORM_TEXTURE5 },
-  { "texture6", UNIFORM_TEXTURE6 },
-  { "texture7", UNIFORM_TEXTURE7 },
+const string g_font_db_ext { "*.db" };
+const string g_font_name_query {
+  "SELECT name FROM 'font_info'"
 };
+const string g_font_name_col { "name" };
 
 
-const std::map<string, GLuint> g_named_attribs {
-  { "position", ATTRIB_POSITION },
-  { "color", ATTRIB_COLOR },
-  { "normals", ATTRIB_NORMAL },
-  { "binormals", ATTRIB_BINORMAL },
-  { "tangents", ATTRIB_TANGENT },
-  { "texcoord0", ATTRIB_TEXCOORD0 },
-  { "texcoord1", ATTRIB_TEXCOORD1 },
-  { "texcoord2", ATTRIB_TEXCOORD1 },
-  { "texcoord3", ATTRIB_TEXCOORD1 },
-  { "bone_weights", ATTRIB_BONE_WEIGHTS },
-  { "bone_indices", ATTRIB_BONE_INDICES },
-};
+resources_t g_default_resources;
 
 
-const std::map<string, GLuint> g_named_frag_outs {
-  { "out0", 0 },
-  { "out1", 1 },
-  { "out2", 2 },
-  { "out3", 3 },
-};
+} // namespace <anon>
 
 
-const uint64_t resources_t::font_seed = hash64("font+");
-const uint64_t resources_t::material_seed = hash64("material+");
-const uint64_t resources_t::texture_seed = hash64("texture+");
-const uint64_t resources_t::program_seed = hash64("program+");
-const uint64_t resources_t::vert_shader_seed = hash64("vertshader+");
-const uint64_t resources_t::frag_shader_seed = hash64("fragshader+");
+const uint64_t resources_t::font_seed        = 0x892c01fd8a8133b9UL;
+const uint64_t resources_t::material_seed    = 0x14f054214ee70b42UL;
+const uint64_t resources_t::texture_seed     = 0xef134ee58d8d956aUL;
+const uint64_t resources_t::program_seed     = 0x9eed7bcf7ab01992UL;
+const uint64_t resources_t::vert_shader_seed = 0x84c1fbf3f9cbb1aeUL;
+const uint64_t resources_t::frag_shader_seed = 0x0650eccf70e139c7UL;
 
 
-
-static resources_t g_default_resources;
 resources_t &resources_t::default_resources()
 {
   return g_default_resources;
-}
-
-
-
-static bool read_token(tokiter_t &iter, const tokiter_t &end, token_kind_t kind)
-{
-  if (iter != end && iter->kind == kind) {
-    ++iter;
-    return true;
-  }
-  return false;
-}
-
-
-
-static bool read_token_id(tokiter_t &iter, const tokiter_t &end, const string &value)
-{
-  if (iter != end && iter->kind == TOK_ID && iter->value == value) {
-    ++iter;
-    return true;
-  }
-  return false;
-}
-
-
-
-static void skip_through_semicolon(tokiter_t &iter, const tokiter_t &end)
-{
-  while (iter != end && !read_token(iter, end, TOK_SEMICOLON)) {
-    ++iter;
-  }
 }
 
 
@@ -304,38 +240,6 @@ rmaterial_t *resources_t::load_material(const string &name)
 
 
 
-static bool read_program_opening(tokiter_t &iter, const tokiter_t &end)
-{
-  {
-    const token_t &idtok = *iter;
-
-    if (idtok.kind != TOK_ID || idtok.value != "shader") {
-      s_log_error("Unable to read shader, invalid opening token");
-      return false;
-    }
-  }
-
-  ++iter;
-
-  if (iter == end) {
-    s_log_error("Unexpected end of shader");
-    return false;
-  }
-
-  const token_t &nametok = *iter;
-  if (!nametok.is_string()) {
-    s_log_error("Expected name string for shader, found <%s>",
-      nametok.descriptor().c_str());
-    return false;
-  }
-
-  ++iter;
-
-  return read_token(iter, end, TOK_CURL_OPEN);
-}
-
-
-
 bool resources_t::load_program_def(rprogram_t *prog, const locmap_t::const_iterator &from)
 {
   string source;
@@ -353,259 +257,9 @@ bool resources_t::load_program_def(rprogram_t *prog, const locmap_t::const_itera
   lex.set_skip_newlines(true);
   lex.run(source);
 
-  const tokenlist_t &tokens = lex.tokens();
-  auto iter = tokens.cbegin();
-  auto end = tokens.cend();
-
-  return read_program(prog, iter, end);
-}
-
-
-
-bool resources_t::read_program(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end)
-{
-  if (!read_program_opening(iter, end)) {
-    s_log_error("Unable to read program opening, exiting early");
-    return false;
-  }
-
-  bool read_close = false;
-
-  while (iter != end) {
-    if (read_program_shader(prog, iter, end)) {
-      continue;
-    } else if (read_program_uniform(prog, iter, end)) {
-      continue;
-    } else if (read_program_attrib(prog, iter, end)) {
-      continue;
-    } else if (read_program_frag_out(prog, iter, end)) {
-      continue;
-    } else if ((read_close = read_token(iter, end, TOK_CURL_CLOSE))) {
-      break;
-    } else {
-      s_log_error("Unexpected token at [%d:%d] <%s>",
-        iter->pos.line, iter->pos.column, iter->descriptor().c_str());
-      skip_through_semicolon(iter, end);
-    }
-  }
-
-  return read_close && iter == end;
-}
-
-
-
-bool resources_t::read_program_shader(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end)
-{
-  GLenum shader_kind = GL_VERTEX_SHADER;
-
-  if (read_token_id(iter, end, "frag")) {
-    s_log_note("Frag read");
-    shader_kind = GL_FRAGMENT_SHADER;
-  } else if (read_token_id(iter, end, "vert")) {
-    // nop
-  } else {
-    return false;
-  }
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected shader path");
-    return false;
-  } else if (!iter->is_string()) {
-    s_log_error("Unexpected token <%s>, expected shader path.",
-      iter->descriptor().c_str());
-    return false;
-  }
-
-  const token_t &pathtok = *iter;
-  ++iter;
-
-  if (!read_token(iter, end, TOK_SEMICOLON)) {
-    s_log_error("Expected semicolon, got <%s>", iter->descriptor().c_str());
-    return false;
-  }
-
-  rshader_t *shader = load_shader(pathtok.value, shader_kind);
-  if (shader) {
-    prog->attach_shader(*shader);
-  }
-
-  return true;
-}
-
-
-
-bool resources_t::read_program_uniform(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end)
-{
-  if (!read_token_id(iter, end, "uniform")) {
-    return false;
-  }
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected uniform binding");
-    return false;
-  }
-
-  int binding = 0;
-
-  switch (iter->kind) {
-  case TOK_ID: {
-    auto name_iter = g_named_uniforms.find(iter->value);
-    if (name_iter == g_named_uniforms.end()) {
-      s_log_error("%s is not a predefined uniform binding", iter->value.c_str());
-      skip_through_semicolon(iter, end);
-      return true;
-    }
-    binding = name_iter->second;
-  } break;
-  case TOK_INTEGER_LIT:
-    binding = std::atoi(iter->value.c_str());
-    break;
-  default:
-    s_log_error("Unexpected token <%s>", iter->descriptor().c_str());
-    skip_through_semicolon(iter, end);
-    return true;
-  }
-
-  ++iter;
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected uniform name");
-    return false;
-  } else if (iter->kind != TOK_ID) {
-    s_log_error("Unexpected token <%s> - expected uniform name", iter->value.c_str());
-    skip_through_semicolon(iter, end);
-    return true;
-  }
-
-  const token_t &nametok = *iter;
-  ++iter;
-
-  if (!read_token(iter, end, TOK_SEMICOLON)) {
-    s_log_error("Expected semicolon at end of uniform");
-    return false;
-  }
-
-  s_log_note("Binding uniform %d to '%s'", binding, nametok.value.c_str());
-  prog->bind_uniform(binding, nametok.value);
-
-  return true;
-}
-
-
-
-bool resources_t::read_program_attrib(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end)
-{
-  if (!read_token_id(iter, end, "attrib")) {
-    return false;
-  }
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected attrib binding");
-    return false;
-  }
-
-  GLuint binding = 0;
-
-  switch (iter->kind) {
-  case TOK_ID: {
-    auto name_iter = g_named_attribs.find(iter->value);
-    if (name_iter == g_named_attribs.end()) {
-      s_log_error("%s is not a predefined attrib binding", iter->value.c_str());
-      skip_through_semicolon(iter, end);
-      return true;
-    }
-    binding = name_iter->second;
-  } break;
-  case TOK_INTEGER_LIT:
-    binding = std::atoi(iter->value.c_str());
-    break;
-  default:
-    s_log_error("Unexpected token <%s>", iter->descriptor().c_str());
-    skip_through_semicolon(iter, end);
-    return true;
-  }
-
-  ++iter;
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected attrib name");
-    return false;
-  } else if (iter->kind != TOK_ID) {
-    s_log_error("Unexpected token <%s> - expected attrib name", iter->value.c_str());
-    skip_through_semicolon(iter, end);
-    return true;
-  }
-
-  const token_t &nametok = *iter;
-  ++iter;
-
-  if (!read_token(iter, end, TOK_SEMICOLON)) {
-    s_log_error("Expected semicolon at end of attrib");
-    return false;
-  }
-
-  s_log_note("Binding attrib %d to '%s'", binding, nametok.value.c_str());
-  prog->bind_attrib(binding, nametok.value);
-
-  return true;
-}
-
-
-
-bool resources_t::read_program_frag_out(rprogram_t *prog, tokenlist_t::const_iterator &iter, const tokenlist_t::const_iterator &end)
-{
-  if (!read_token_id(iter, end, "frag_out")) {
-    return false;
-  }
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected frag_out binding");
-    return false;
-  }
-
-  GLuint binding = 0;
-
-  switch (iter->kind) {
-  case TOK_ID: {
-    auto name_iter = g_named_frag_outs.find(iter->value);
-    if (name_iter == g_named_frag_outs.end()) {
-      s_log_error("%s is not a predefined frag_out binding", iter->value.c_str());
-      skip_through_semicolon(iter, end);
-      return true;
-    }
-    binding = name_iter->second;
-  } break;
-  case TOK_INTEGER_LIT:
-    binding = std::atoi(iter->value.c_str());
-    break;
-  default:
-    s_log_error("Unexpected token <%s>", iter->descriptor().c_str());
-    skip_through_semicolon(iter, end);
-    return true;
-  }
-
-  ++iter;
-
-  if (iter == end) {
-    s_log_error("Unexpected end of source - expected frag_out name");
-    return false;
-  } else if (iter->kind != TOK_ID) {
-    s_log_error("Unexpected token <%s> - expected frag_out name", iter->value.c_str());
-    skip_through_semicolon(iter, end);
-    return true;
-  }
-
-  const token_t &nametok = *iter;
-  ++iter;
-
-  if (!read_token(iter, end, TOK_SEMICOLON)) {
-    s_log_error("Expected semicolon at end of frag_out");
-    return false;
-  }
-
-  prog->bind_frag_out(binding, nametok.value);
-
-  return true;
+  resdef_parser_t parser;
+  parser.set_tokens(lex.tokens());
+  return parser.read_shader(*prog, *this) == PARSE_OK;
 }
 
 
@@ -673,22 +327,22 @@ rshader_t *resources_t::load_shader(const string &path, unsigned kind)
     }
   }
 
-  std::vector<char> buffer;
+  string buffer;
   PHYSFS_File *file = PHYSFS_openRead(path.c_str());
   if (!file) {
     s_log_error("Unable to open shader file at '%s'", path.c_str());
     return nullptr;
   }
-  const auto len = PHYSFS_fileLength(file);
-  buffer.reserve(len);
+  const GLint len = (GLint)PHYSFS_fileLength(file);
+  buffer.resize(len);
   PHYSFS_readBytes(file, buffer.data(), len);
   PHYSFS_close(file);
 
   s_log_note("Allocating resource %x of kind shader", hash);
   rshader_t *shader = allocate_resource<rshader_t>(hash, kind);
-  shader->load_source(buffer.data(), len);
+  shader->load_source(buffer);
   if (!shader->compile()) {
-    s_log_error("Unable to compile shader '%s': %s", path.c_str(), shader->error_string());
+    s_log_error("Unable to compile shader '%s': %s", path.c_str(), shader->error_string().c_str());
     destroy_resource(shader);
     return nullptr;
   }
@@ -729,8 +383,6 @@ void resources_t::release_texture(rtexture_t *texture)
 
 void resources_t::release_material(rmaterial_t *material)
 {
-  rtexture_t *tex = nullptr;
-  rprogram_t *prog = nullptr;
   std::lock_guard<std::recursive_mutex> lock((lock_));
   if (refs_.release(material)) {
     const size_t num_passes = material->num_passes();
@@ -791,12 +443,6 @@ void resources_t::release_all()
 
 void resources_t::prepare_fonts()
 {
-  static const string font_db_ext { "*.db" };
-  static const string font_name_query {
-    "SELECT name FROM 'font_info'"
-  };
-  static const string name_col { "name" };
-
   char temp_path[MAX_PATH_LEN] = {'\0'};
   char **fdbs = PHYSFS_enumerateFiles("fonts/");
   char **fdb_iter = fdbs;
@@ -815,10 +461,10 @@ void resources_t::prepare_fonts()
     {
       database_t db = database_t::read_physfs(fdb_str, false);
       if (!db.has_error()) {
-        dbstatement_t stmt = db.prepare(font_name_query);
+        dbstatement_t stmt = db.prepare(g_font_name_query);
         for (auto &result : stmt) {
-          const char *fontname = result.column_text_ptr(name_col);
-          const int len = result.column_blob_size(name_col);
+          const char *fontname = result.column_text_ptr(g_font_name_col);
+          const int len = result.column_blob_size(g_font_name_col);
           const uint64_t hash = hash64(fontname, len, font_seed);
           font_dbs_.emplace(hash, pair.first);
           s_log_note("Located font '%s' in <%s>", fontname, *fdb_iter);
@@ -869,7 +515,7 @@ void resources_t::find_definition_files(const char *dir, str_inserter_t &inserte
 void resources_t::find_definitions_within(tokiter_t iter,
   const tokiter_t &end,
   const string::const_iterator &source_begin,
-  const fileset_t::const_iterator &filepath)
+  const nameset_t::const_iterator &filepath)
 {
   resdef_parser_t parser;
   parser.set_tokens(iter, end);
@@ -899,9 +545,13 @@ void resources_t::find_definitions_within(tokiter_t iter,
       continue;
     }
 
+    auto name_result = def_names_.insert(name);
+
     resloc_t loc = {
       (size_t)(from - source_begin),
       (size_t)(to - from),
+      kind,
+      name_result.first,
       filepath
     };
 
@@ -911,7 +561,7 @@ void resources_t::find_definitions_within(tokiter_t iter,
 
 
 
-void resources_t::find_definitions(const fileset_t::const_iterator &path)
+void resources_t::find_definitions(const nameset_t::const_iterator &path)
 {
   s_log_note("Scanning '%s' for resources", path->c_str());
   string file_source;
@@ -954,7 +604,7 @@ void resources_t::find_definitions(const fileset_t::const_iterator &path)
 
 void resources_t::prepare_definitions()
 {
-  std::list<fileset_t::const_iterator> matpaths;
+  std::list<nameset_t::const_iterator> matpaths;
   {
     str_inserter_t path_inserter = std::back_inserter(matpaths);
     find_definition_files("defs", path_inserter);
@@ -967,6 +617,33 @@ void resources_t::prepare_definitions()
   for (const auto &path : matpaths) {
     find_definitions(path);
   }
+}
+
+
+
+auto resources_t::definition_names() const -> const nameset_t &
+{
+  return def_names_;
+}
+
+
+
+bool resources_t::name_is_material(const string &name) const
+{
+  const uint64_t hash = hash64(name, material_seed);
+  std::lock_guard<std::recursive_mutex> lock((lock_));
+  const locmap_t::const_iterator iter = res_files_.find(hash);
+  return iter != res_files_.cend() && iter->second.kind == RESDEF_KIND_MATERIAL;
+}
+
+
+
+bool resources_t::name_is_program(const string &name) const
+{
+  const uint64_t hash = hash64(name, program_seed);
+  std::lock_guard<std::recursive_mutex> lock((lock_));
+  const locmap_t::const_iterator iter = res_files_.find(hash);
+  return iter != res_files_.cend() && iter->second.kind == RESDEF_KIND_SHADER;
 }
 
 

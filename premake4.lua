@@ -171,6 +171,14 @@ end -- mkdir_p
 
 solution "snow"
 configurations { "debug", "release" }
+
+project "snow_c_libs"
+kind "StaticLib"
+targetdir "lib"
+language "C"
+files { "src/ext/sqlite3.c", "src/ext/stb_image.c" }
+buildoptions { "-arch i386", "-arch x86_64" }
+
 project "snow"
 
 configuration {}
@@ -210,20 +218,19 @@ end
 -- Compiler flags
 g_version = "0.0.1"
 language "C++"
-buildoptions { "-std=c++11" }
 flags { "FloatStrict", "NoRTTI" }
 objdir "obj"
 
--- PhysicsFS
-links { "physfs" }
+-- Libraries
+links { "physfs", "snow_c_libs" }
+linkoptions { '`fltk-config --ldflags`' }
+buildoptions { '`fltk-config --cxxflags`' }
 
 -- Add sources/include directories
 includedirs { "include" }
-files { "src/**.cc" }
-files { "src/**.c" }
-files { "src/*.cc" }
-files { "src/*.c" }
-excludes { "src/script/*.cc" }
+local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"))
+files(cxx_files)
+excludes { "src/script/*" }
 
 configuration "no-server"
 excludes { "src/server/*.cc" }
@@ -257,15 +264,17 @@ flags { "NoExceptions" }
 
 -- OS X specific options
 configuration "macosx"
--- links { "Cocoa.framework" }
--- links { "OpenGL.framework" }
--- links { "IOKit.framework" }
+links { "Cocoa.framework" }
+links { "OpenGL.framework" }
+links { "IOKit.framework" }
 
-linkoptions { "-ObjC++", "-headerpad_max_install_names" }
+buildoptions { "-arch i386" }
+linkoptions { "-ObjC++", "-headerpad_max_install_names", "-arch i386" }
 
--- buildoptions { "-fno-objc-arc" }
-configuration "macosx"
-buildoptions { "-ObjC++" }
+configuration {}
+buildoptions { "-std=c++11" }
+
+configuration { "macosx" }
 buildoptions { "-stdlib=libc++" }
 links { "c++" }
 
@@ -276,10 +285,10 @@ local change_libs_osx = {
   ["libtbb.dylib"]                                     = "@executable_path/../Frameworks/libtbb.dylib",
   ["libtbbmalloc.dylib"]                               = "@executable_path/../Frameworks/libtbbmalloc.dylib",
   ["libtbbmalloc_debug.dylib"]                         = "@executable_path/../Frameworks/libtbbmalloc_debug.dylib",
-  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.2.dylib",
-  ["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
-  ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
-  ["/usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib"] = "@executable_path/../Frameworks/libssl.dylib"
+  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.dylib"
+  --["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
+  -- ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
+  -- ["/usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib"] = "@executable_path/../Frameworks/libssl.dylib"
 }
 
 do
@@ -319,9 +328,9 @@ links { "tbb" }
 -- pkg-config packages
 configuration {}
 g_dynamic_libs = { }
-g_static_libs = { "snow-common", "sqlite3", "libenet", "glfw3" }
+g_static_libs = { "snow-common", "libenet", "glfw3" }
 if #g_static_libs > 0 then
-  linkoptions { "`pkg-config --libs --static " .. table.concat(g_static_libs, " ") .. "`"}
+  linkoptions { "`pkg-config --libs " .. table.concat(g_static_libs, " ") .. "`"}
 end
 if #g_dynamic_libs > 0 then
   linkoptions { "`pkg-config --libs " .. table.concat(g_dynamic_libs, " ") .. "`"}

@@ -13,62 +13,57 @@ struct game_object_t;
 
 struct S_EXPORT transform_t : public component_t<transform_t, TRANSFORM_COMPONENT>
 {
-  static constexpr const char *COMPONENT_NAME = "transform";
-
-  transform_t();
-  explicit transform_t(game_object_t *obj);
-
-  virtual ~transform_t();
+  DECL_COMPONENT_CTOR_DTOR(transform_t);
 
 /*******************************************************************************
 *                               relative changes                               *
 *******************************************************************************/
 
-  void  move_relative(const vec3f_t &t);
-  void  translate(const vec3f_t &t);
-  void  scale(const vec3f_t &s);
-  void  rotate(const mat3f_t &mat);
-  void  rotate_quat(const quatf_t &quat);
-  void  rotate_euler(float pitch, float yaw, float roll);
-  void  rotate_euler(const vec3f_t &angles);
+  void            move_relative(const vec3f_t &t);
+  void            translate(const vec3f_t &t);
+  void            scale(const vec3f_t &s);
+  void            rotate(const mat3f_t &mat);
+  void            rotate_quat(const quatf_t &quat);
+  void            rotate_euler(float pitch, float yaw, float roll);
+  void            rotate_euler(const vec3f_t &angles);
 
 /*******************************************************************************
 *                               absolute changes                               *
 *******************************************************************************/
 
-  void  set_translation(const vec3f_t &t);
-  void  set_scale(const vec3f_t &s);
-  void  set_rotation(const mat3f_t &mat);
-  void  set_rotation_quat(const quatf_t &quat);
-  void  set_rotation_euler(float pitch, float yaw, float roll);
-  void  set_rotation_euler(const vec3f_t &angles);
+  void            set_translation(const vec3f_t &t);
+  void            set_scale(const vec3f_t &s);
+  void            set_rotation(const mat3f_t &mat);
+  void            set_rotation_quat(const quatf_t &quat);
+  void            set_rotation_euler(float pitch, float yaw, float roll);
+  void            set_rotation_euler(const vec3f_t &angles);
 
 /*******************************************************************************
 *                                   getters                                    *
 *******************************************************************************/
 
-  auto  translation() const -> vec3f_t;
-  auto  scale() const -> vec3f_t;
-  auto  rotation() const -> const mat3f_t &;
-  auto  pitch() const -> float;
-  auto  yaw() const   -> float;
-  auto  roll() const  -> float;
-  auto  rotation_euler() const -> vec3f_t;
+  const vec3f_t & translation() const;
+  const vec3f_t & scale() const;
+  const mat3f_t & rotation() const;
+  float           pitch() const;
+  float           yaw() const  ;
+  float           roll() const ;
+  vec3f_t         rotation_euler() const;
 
 /*******************************************************************************
 *                        special case getters/modifiers                        *
 *******************************************************************************/
 
-  auto  transformed(const transform_t &other) const -> transform_t;
-  auto  transform(const transform_t &other)         -> transform_t &;
+  transform_t     transformed(const transform_t &other) const;
+  transform_t &   transform(const transform_t &other);
 
-  auto  local_mat4() const -> mat4f_t;
-  auto  world_mat4() const -> mat4f_t;
+  mat4f_t         local_mat4() const;
+  mat4f_t         world_mat4() const;
 
-private:
-  mat3f_t  rotation_;
-  vec3f_t  scale_;
-  vec3f_t  translation_;
+
+  mat3f_t         rotation_;
+  vec3f_t         scale_;
+  vec3f_t         translation_;
 };
 
 

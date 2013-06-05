@@ -3,6 +3,13 @@
 namespace snow {
 
 
+system_t::~system_t()
+{
+  /* nop */
+}
+
+
+
 bool system_t::active() const
 {
   return active_;

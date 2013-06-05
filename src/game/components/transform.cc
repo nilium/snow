@@ -5,26 +5,7 @@
 namespace snow {
 
 
-transform_t::transform_t() :
-  component_t()
-{
-    /* nop */
-}
-
-
-
-transform_t::transform_t(game_object_t *obj) :
-  component_t(obj)
-{
-  /* nop */
-}
-
-
-
-transform_t::~transform_t()
-{
-  /* nop */
-}
+DEFINE_COMPONENT_CTOR_DTOR(transform_t);
 
 
 
@@ -122,14 +103,14 @@ void transform_t::set_rotation_euler(const vec3f_t &angles)
 
 
 
-auto transform_t::translation() const -> vec3f_t
+auto transform_t::translation() const -> const vec3f_t &
 {
   return translation_;
 }
 
 
 
-auto transform_t::scale() const -> vec3f_t
+auto transform_t::scale() const -> const vec3f_t &
 {
   return scale_;
 }
@@ -199,9 +180,10 @@ transform_t &transform_t::transform(const transform_t &other)
 
 auto transform_t::local_mat4() const -> mat4f_t
 {
-  return (mat4f_t::translation(translation_) *
-          mat4f_t::scaling(scale_) *
-          (mat4f_t)rotation_);
+  return mat4f_t::look_at(vec3f_t::zero, vec3f_t::zero, vec3f_t::zero);
+  // return (mat4f_t::translation(translation_) *
+          // mat4f_t::scaling(scale_) *
+          // (mat4f_t)rotation_);
 }
 
 

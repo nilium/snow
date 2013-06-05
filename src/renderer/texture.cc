@@ -116,13 +116,19 @@ void rtexture_t::bind()
   }
 
   glBindTexture(target_, name_);
+  assert_gl("Binding texture to target");
 
   if (set_parameters) {
     glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, mag_filter_);
+    assert_gl("Setting mag filter");
     glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, min_filter_);
+    assert_gl("Setting min filter");
     glTexParameteri(target_, GL_TEXTURE_WRAP_S, wrap_x_);
+    assert_gl("Setting wrap S");
     glTexParameteri(target_, GL_TEXTURE_WRAP_T, wrap_y_);
+    assert_gl("Setting wrap T");
     glTexParameteri(target_, GL_TEXTURE_WRAP_R, wrap_z_);
+    assert_gl("Setting wrap R");
   }
 }
 
@@ -131,11 +137,9 @@ void rtexture_t::bind()
 void rtexture_t::set_filters(GLint mag_filter, GLint min_filter)
 {
   if (mag_filter != mag_filter_) {
-    glTexParameteri(target_, GL_TEXTURE_MAG_FILTER, mag_filter);
     mag_filter_ = mag_filter;
   }
   if (min_filter != min_filter_) {
-    glTexParameteri(target_, GL_TEXTURE_MIN_FILTER, min_filter);
     min_filter_ = min_filter;
   }
 }
@@ -145,15 +149,12 @@ void rtexture_t::set_filters(GLint mag_filter, GLint min_filter)
 void rtexture_t::set_wrapping(GLint wrap_x, GLint wrap_y, GLint wrap_z)
 {
   if (wrap_x != wrap_x_) {
-    glTexParameteri(target_, GL_TEXTURE_WRAP_S, wrap_x);
     wrap_x_ = wrap_x;
   }
   if (wrap_y != wrap_y_) {
-    glTexParameteri(target_, GL_TEXTURE_WRAP_T, wrap_y);
     wrap_y_ = wrap_y;
   }
   if (wrap_z != wrap_z_) {
-    glTexParameteri(target_, GL_TEXTURE_WRAP_R, wrap_z);
     wrap_z_ = wrap_z;
   }
 }
@@ -330,6 +331,22 @@ void rtexture_t::zero()
 
 
 
+void rtexture_t::set_source(const string_t &src)
+{
+  assert(src.size() < MAX_SOURCE_LENGTH);
+  std::memcpy(source_, src.c_str(), src.size());
+  source_[src.size()] = '\0';
+}
+
+
+
+void rtexture_t::set_source(const char *src)
+{
+  strncpy(source_, src, MAX_SOURCE_LENGTH);
+}
+
+
+
 bool load_texture_2d(const string &path, rtexture_t &tex,
   bool gen_mipmaps, texture_components_t required_components)
 {
@@ -385,6 +402,8 @@ bool load_texture_2d(const string &path, rtexture_t &tex,
   }
 
   stbi_image_free(data);
+
+  tex.set_source(path);
 
   return true;
 }

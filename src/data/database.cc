@@ -154,8 +154,13 @@ int database_t::check_error(int code)
   error_ = code;
   if (dbis_error_code(code)) {
     error_msg_ = (db_ != NULL
+#if SQLITE_VERSION_NUMBER >= 3007015
                   ? sqlite3_errmsg(db_)
                   : sqlite3_errstr(code));
+#else
+                  ? sqlite3_errmsg(db_)
+                  : "Unable to determine error code");
+#endif
     s_log_error("SQLite3 Error: %s", error_msg_.c_str());
     if (throw_on_error_) {
       s_throw(std::runtime_error, "SQLite3 Error: %s", error_msg_.c_str());
@@ -173,8 +178,13 @@ int database_t::check_error_nothrow(int code)
   error_ = code;
   if (dbis_error_code(code)) {
     error_msg_ = (db_ != NULL
+#if SQLITE_VERSION_NUMBER >= 3007015
                   ? sqlite3_errmsg(db_)
                   : sqlite3_errstr(code));
+#else
+                  ? sqlite3_errmsg(db_)
+                  : "Unable to determine error code");
+#endif
     s_log_error("SQLite3 Error: %s", error_msg_.c_str());
   } else {
     error_msg_.clear();

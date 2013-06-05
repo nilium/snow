@@ -46,17 +46,20 @@ void client_cleanup();
 void cl_global_init()
 {
   std::call_once(g_init_flag, [] {
+    glfwDefaultWindowHints();
 #if !S_USE_GL_2
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    // glfwWindowHint(GLFW_ALPHA_BITS, 0);
+    // glfwWindowHint(GLFW_DEPTH_BITS, 16);
 #else
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 1);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 0);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_NO_PROFILE);
 #endif
-#define USE_GLFW_HDPI_EXTENSION
+// #define USE_GLFW_HDPI_EXTENSION
 #ifdef USE_GLFW_HDPI_EXTENSION
     glfwWindowHint(GLFW_HIDPI_IF_AVAILABLE, GL_TRUE);
 #endif
@@ -122,9 +125,19 @@ void client_t::initialize(int argc, const char *argv[])
   } else {
     s_log_note("Window initialized");
   }
+  set_main_window(window_);
 
+  vec2_t<int> window_size;
+  glfwGetWindowSize(window_, &window_size.x, &window_size.y);
+  event_queue_.emit_event({
+    .sender_id = EVENT_SENDER_WINDOW,
+    .window = window_,
+    .kind = WINDOW_SIZE_EVENT,
+    .time = 0,
+    .window_size = window_size
+  });
   event_queue_.set_window_callbacks(window_, ALL_EVENT_KINDS);
-  glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_CAPTURED);
+  // glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
 
   s_log_note("------------------- INIT FINISHED --------------------");
 
@@ -253,7 +266,7 @@ void client_t::dispose()
   #endif
 
   if (window_) {
-    glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
+    // glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
     glfwDestroyWindow(window_);
     window_ = nullptr;
   }

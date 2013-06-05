@@ -51,9 +51,14 @@ using guard_t = uint32_t;
 #endif
 
 
-/*! The main memory pool. */
-static mempool_t g_main_pool;
+namespace {
 
+
+/*! The main memory pool. */
+mempool_t g_main_pool;
+
+
+} // namespace <anon>
 
 
 /*!
@@ -234,8 +239,6 @@ void pool_destroy(mempool_t *pool)
     pool->managed = false;
 
     pool->lock.unlock();
-
-    s_log_note("Destroyed pool (%p)", (const void *)pool);
   } else {
     s_log_error("Attempt to destroy already-destroyed memory pool (%p)", (const void *)pool);
   }
@@ -649,9 +652,6 @@ void pool_free(void *buffer)
 
   block_head_t *block = (block_head_t *)buffer - 1;
   mempool_t *pool = block->pool;
-#if USE_MEMORY_GUARD
-  guard_t guard;
-#endif
 
   if ( ! pool) {
     s_log_error("Attempt to free block without an associated pool");

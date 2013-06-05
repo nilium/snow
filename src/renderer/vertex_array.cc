@@ -72,9 +72,10 @@ void rvertex_array_t::bind()
 {
   if (name_ == 0) {
     glGenVertexArrays(1, &name_);
-    assert_gl("Generating vertex arrays");
+    assert_gl("Generating vertex array object");
   }
   glBindVertexArray(name_);
+  assert_gl("Binding vertex array object");
 }
 
 

@@ -1,7 +1,7 @@
 #ifndef __SNOW__PHYSICSFS_VFS_HH__
 #define __SNOW__PHYSICSFS_VFS_HH__
 
-#include <sqlite3.h>
+#include "../ext/sqlite3.h"
 
 
 namespace snow {

@@ -25,6 +25,7 @@ string get_program_info_log(GLuint program)
   log_temp.resize(log_length);
 
   glGetProgramInfoLog(program, log_length, NULL, log_temp.data());
+  assert_gl("Getting program info log");
 
   return string((const char *)log_temp.data(), log_length);
 }
@@ -36,7 +37,7 @@ string get_program_info_log(GLuint program)
 /*==============================================================================
   constructor
 
-    Description
+    ctor -- allocates a program object on construction.
 ==============================================================================*/
 rprogram_t::rprogram_t()
 : program_(glCreateProgram()), linked_(false)
@@ -47,10 +48,10 @@ rprogram_t::rprogram_t()
 
 
 /*==============================================================================
- constructor
+ deconstructor
 
- Description
- ==============================================================================*/
+  dtor
+==============================================================================*/
 rprogram_t::~rprogram_t()
 {
   unload();
@@ -61,7 +62,7 @@ rprogram_t::~rprogram_t()
 /*==============================================================================
   move constructor
 
-    Description
+    Move constructor.
 ==============================================================================*/
 rprogram_t::rprogram_t(rprogram_t &&program)
 : program_(program.program_), linked_(program.linked_),
@@ -76,7 +77,8 @@ rprogram_t::rprogram_t(rprogram_t &&program)
 /*==============================================================================
     assignment operator
 
-    Description
+    Move-assign operator. Deallocates any resources currently held by this
+    program.
 ==============================================================================*/
 rprogram_t &rprogram_t::operator = (rprogram_t &&program)
 {
@@ -100,7 +102,7 @@ rprogram_t &rprogram_t::operator = (rprogram_t &&program)
 /*==============================================================================
     use
 
-    Description
+    Sets the program for drawing.
 ==============================================================================*/
 void rprogram_t::use()
 {
@@ -108,6 +110,7 @@ void rprogram_t::use()
     s_throw(std::runtime_error, "Shader program is not in a usable state");
 
   glUseProgram(program_);
+  assert_gl("Using program");
 }
 
 
@@ -115,13 +118,12 @@ void rprogram_t::use()
 /*==============================================================================
     bind_uniform
 
-    Description
+    Binds a named uniform to a uniform number.
 ==============================================================================*/
 void rprogram_t::bind_uniform(int key, const string &name)
 {
   if (!valid()) {
-    s_throw(std::runtime_error, "Unable to bind uniform location: "
-                             "program is invalid");
+    s_throw(std::runtime_error, "Unable to bind uniform location: program is invalid");
   }
 
   if (uniforms_.find(key) != uniforms_.end()) {
@@ -143,13 +145,12 @@ void rprogram_t::bind_uniform(int key, const string &name)
 /*==============================================================================
     uniform_location
 
-    Description
+    Returns the uniform location for a previously-bound uniform number.
 ==============================================================================*/
 GLint rprogram_t::uniform_location(int key) const
 {
   if (!valid()) {
-    s_throw(std::runtime_error, "Unable to get uniform location (int): "
-                             "program is invalid");
+    s_throw(std::runtime_error, "Unable to get uniform location (int): program is invalid");
   } else if (!linked()) {
     return -1;
   }
@@ -167,13 +168,12 @@ GLint rprogram_t::uniform_location(int key) const
 /*==============================================================================
     uniform_location
 
-    Description
+    Returns the uniform location for the named uniform.
 ==============================================================================*/
 GLint rprogram_t::uniform_location(const string &name) const
 {
   if (!valid()) {
-    s_throw(std::runtime_error, "Unable to get uniform location (string): "
-                             "program is invalid");
+    s_throw(std::runtime_error, "Unable to get uniform location (string): program is invalid");
   } else if (!linked()) {
     return -1;
   }
@@ -188,13 +188,12 @@ GLint rprogram_t::uniform_location(const string &name) const
 /*==============================================================================
     bind_frag_out
 
-    Description
+    Binds a named fragment shader output to the given color number.
 ==============================================================================*/
 void rprogram_t::bind_frag_out(GLuint colorNumber, const string &name)
 {
   if (!valid()) {
-    s_throw(std::runtime_error, "Unable to bind fragment output (no index): "
-                             "program is invalid");
+    s_throw(std::runtime_error, "Unable to bind fragment output (no index): program is invalid");
   }
 
   glBindFragDataLocation(program_, colorNumber, name.c_str());
@@ -206,14 +205,15 @@ void rprogram_t::bind_frag_out(GLuint colorNumber, const string &name)
 /*==============================================================================
     bind_frag_out
 
-    Description
+    Binds a named fragment shader output to the given indexed color number.
+    Only available in GL 3.3 or higher or with GL_ARB_blend_func_extended
+    defined and available.
 ==============================================================================*/
 #if GL_VERSION_3_3 || GL_ARB_blend_func_extended
 void rprogram_t::bind_frag_out(GLuint colorNumber, GLuint index, const string &name)
 {
   if (!valid()) {
-    s_throw(std::runtime_error, "Unable to bind fragment output (indexed): "
-                             "program is invalid");
+    s_throw(std::runtime_error, "Unable to bind fragment output (indexed): program is invalid");
   }
 
   glBindFragDataLocationIndexed(program_, colorNumber, index, name.c_str());
@@ -226,7 +226,7 @@ void rprogram_t::bind_frag_out(GLuint colorNumber, GLuint index, const string &n
 /*==============================================================================
     bind_attrib
 
-    Description
+    Binds a vertex attribute location to the given vertex attribute name.
 ==============================================================================*/
 void rprogram_t::bind_attrib(GLuint location, const string &name)
 {
@@ -243,7 +243,7 @@ void rprogram_t::bind_attrib(GLuint location, const string &name)
 /*==============================================================================
     attach_shader
 
-    Description
+    Attaches a shader to the program.
 ==============================================================================*/
 void rprogram_t::attach_shader(const rshader_t &shader)
 {
@@ -262,7 +262,7 @@ void rprogram_t::attach_shader(const rshader_t &shader)
 /*==============================================================================
     detach_shader
 
-    Description
+    Detaches a shader from the program.
 ==============================================================================*/
 void rprogram_t::detach_shader(const rshader_t &shader)
 {
@@ -281,7 +281,8 @@ void rprogram_t::detach_shader(const rshader_t &shader)
 /*==============================================================================
     link
 
-    Description
+    Links the program and any attached shaders. If an error occurs, the error
+    string is set to the program's info log.
 ==============================================================================*/
 bool rprogram_t::link()
 {
@@ -313,13 +314,13 @@ bool rprogram_t::link()
 /*==============================================================================
     validate
 
-    Description
+    Runs glValidateProgram and returns whether validation succeeded. If it
+    failed, the log is stored in the error string.
 ==============================================================================*/
 bool rprogram_t::validate()
 {
   if (!linked()) {
-    s_throw(std::runtime_error, "Unable to get uniform location: "
-                             "program is not linked");
+    s_throw(std::runtime_error, "Unable to get uniform location: program is not linked");
   }
 
   GLint validate_status = 0;
@@ -342,7 +343,7 @@ bool rprogram_t::validate()
 /*==============================================================================
     unload
 
-    Description
+    Unloads any resources allocated for this program.
 ==============================================================================*/
 void rprogram_t::unload()
 {
@@ -358,7 +359,7 @@ void rprogram_t::unload()
 /*==============================================================================
     zero
 
-    Description
+    Zeroes out the program's values. Does not unload them.
 ==============================================================================*/
 void rprogram_t::zero()
 {
@@ -374,7 +375,7 @@ void rprogram_t::zero()
 /*==============================================================================
     load_uniforms
 
-    Description
+    Loads all arbitrarily-bound uniform locations.
 ==============================================================================*/
 void rprogram_t::load_uniforms()
 {
@@ -388,7 +389,7 @@ void rprogram_t::load_uniforms()
 /*==============================================================================
     load_uniform
 
-    Description
+    Loads a specific uniform location -- modifies the input variable.
 ==============================================================================*/
 void rprogram_t::load_uniform(uniform_loc_t &loc)
 {

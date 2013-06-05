@@ -2,7 +2,7 @@
 #define __SNOW__DATABASE_LOCAL_HH__
 
 #include "../config.hh"
-#include <sqlite3.h>
+#include "../ext/sqlite3.h"
 
 
 namespace snow {

@@ -4,8 +4,14 @@
 namespace snow {
 
 
-static const string MAT_KW        { "mat" };
-static const string SHADER_KW     { "shader" };
+namespace {
+
+
+const string MAT_KW        { "mat" };
+const string SHADER_KW     { "shader" };
+
+
+} // namespace <anon>
 
 
 

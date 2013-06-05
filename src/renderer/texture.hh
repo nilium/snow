@@ -33,7 +33,13 @@ struct rtexture_t
     target_ = target;
   }
 
+  /*! Sets the texture mag and min filters.
+
+  Does not take effect until next binding. */
   void set_filters(GLint mag_filter, GLint min_filter);
+  /*! Sets the texture wrapping parameters. Z optional -- defaults to GL_REPEAT.
+
+  Does not take effect until next binding. */
   void set_wrapping(GLint wrap_x, GLint wrap_y, GLint wrap_z = GL_REPEAT);
 
   void unload();
@@ -71,9 +77,19 @@ struct rtexture_t
   inline operator GLuint() const { return name_; }
   inline GLuint operator * () const { return name_; }
 
+  inline int width() const { return width_; }
+  inline int height() const { return height_; }
+  inline int depth() const { return depth_; }
+  inline const char *source() const { return source_; }
+
+  void set_source(const string &src);
+  void set_source(const char *src);
+
 private:
+  static constexpr const size_t MAX_SOURCE_LENGTH = 64;
   void zero();
 
+  char source_[MAX_SOURCE_LENGTH];
   GLuint name_;
   GLenum target_;
   int width_, height_, depth_;

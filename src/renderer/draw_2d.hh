@@ -26,7 +26,7 @@ struct rdraw_2d_t
   {
     vec2f_t         position;
     vec2f_t         texcoord;
-    vec4_t<uint8_t> color;
+    vec4f_t color;
   };
 
 
@@ -45,11 +45,10 @@ struct rdraw_2d_t
 *                          2D stage-draw / buffer ops                          *
 *******************************************************************************/
 
-  void draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices,
-    const GLintptr ib_where);
+  void draw_with_vertex_array(rvertex_array_t &vao, const GLintptr ib_where = 0);
 
-  void buffer_vertices(rbuffer_t &buffer, const GLintptr vb_where);
-  void buffer_indices(rbuffer_t &buffer, const GLintptr ib_where);
+  void buffer_vertices(rbuffer_t &buffer, const GLintptr vb_where = 0);
+  void buffer_indices(rbuffer_t &buffer, const GLintptr ib_where = 0);
 
   /*
     Builds a vertex array object with the 2D drawing's data and returns it.
@@ -58,12 +57,14 @@ struct rdraw_2d_t
     already be bound.
   */
   rvertex_array_t build_vertex_array(const GLuint pos_attrib,
-    const GLuint tex_attrib, const GLuint col_attrib, rbuffer_t &vertices,
-    const GLintptr vb_where);
+    const GLuint tex_attrib, const GLuint col_attrib,
+    rbuffer_t &vertices, const GLintptr vb_where,
+    rbuffer_t &indices);
 
   GLsizeiptr vertex_buffer_size() const;
   GLsizeiptr index_buffer_size() const;
 
+  void clear_buffers(); // Clears the buffers but doesn't clear the drawing stages
   void clear(); // clears internal buffers, does not reset drawing state
   void reset(); // resets drawing state
   void reset_and_clear();
@@ -81,33 +82,33 @@ struct rdraw_2d_t
   // units are relevant to the screen resolution.
   // With tform
   void draw_offset_rect(const vec2f_t &pos, const vec2f_t &size,
-    const vec4_t<uint8_t> &color, rmaterial_t *const material,
+    const vec4f_t &color, rmaterial_t *material,
     const vec2f_t &uv_min = vec2f_t::zero, const vec2f_t &uv_max = vec2f_t::one);
 
   // No tform
   void draw_offset_rect_raw(const vec2f_t &pos, const vec2f_t &size,
-    const vec4_t<uint8_t> &color, rmaterial_t *const material,
+    const vec4f_t &color, rmaterial_t *material,
     const vec2f_t &uv_min = vec2f_t::zero, const vec2f_t &uv_max = vec2f_t::one);
 
   void draw_rect(const vec2f_t &pos, const vec2f_t &size,
-                 const vec4_t<uint8_t> &color, rmaterial_t *const material,
+                 const vec4f_t &color, rmaterial_t *material,
                  const vec2f_t &uv_min = vec2f_t::zero,
                  const vec2f_t &uv_max = vec2f_t::one);
 
   // Draws a rectangle without applying any of the transformations/state
   // handled by the 2D state.
   void draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
-                     const vec4_t<uint8_t> &color, rmaterial_t *const material,
+                     const vec4f_t &color, rmaterial_t *material,
                      const vec2f_t &uv_min = vec2f_t::zero,
                      const vec2f_t &uv_max = vec2f_t::one);
 
 
   // This does not attempt to transform the vertices at all
-  void draw_triangles(const vertex_t *const verts, const GLsizeiptr num_verts,
-                      const face_t *const tris, const GLsizeiptr num_tris,
-                      rmaterial_t *const material);
+  void draw_triangles(const vertex_t *verts, GLint num_verts,
+                      const face_t *tris, GLint num_tris,
+                      rmaterial_t *material);
 
-  void draw_triangle(const vertex_t vertices[3], rmaterial_t *const material);
+  void draw_triangle(const vertex_t vertices[3], rmaterial_t *material);
 
 
 /*******************************************************************************
@@ -135,6 +136,13 @@ struct rdraw_2d_t
   vec2f_t offset_to_screen(const vec2f_t &v) const;
 
 
+  inline const vec2f_t &handle() const { return handle_; }
+  inline const vec2f_t &origin() const { return origin_; }
+  inline const vec2f_t &scale() const { return scale_; }
+  inline const vec2f_t &screen_size() const { return screen_size_; }
+  inline float rotation() const { return rotation_; }
+
+
 private:
 
   struct draw_stage_t {
@@ -143,7 +151,6 @@ private:
     rmaterial_t *   material;    // may not be nullptr
     GLint           base_index;
     GLint           base_vertex; // = vertices_.size() pre-insert
-    vec2f_t         screen_size;
     // must be able to check for num_vertices + N > UINT16_MAX
     uint32_t        num_vertices;
     // keep in mind, three per face
@@ -160,12 +167,12 @@ private:
                 "Vertex has padding between texcoord and color");
 
 
-  using vbuffer_t = std::vector<vertex_t>;
-  using fbuffer_t = std::vector<face_t>;
-  using sbuffer_t = std::vector<draw_stage_t>;
+  using vertex_buffer_t = std::vector<vertex_t>;
+  using face_buffer_t = std::vector<face_t>;
+  using stage_buffer_t = std::vector<draw_stage_t>;
 
 
-  draw_stage_t &push_draw_stage(rmaterial_t *const material, const GLint vertices_needed);
+  draw_stage_t &push_draw_stage(rmaterial_t *material, const GLint vertices_needed);
   const mat3f_t &vertex_transform();
 
 
@@ -176,9 +183,9 @@ private:
   vec2f_t             screen_size_;
   float               rotation_;
   bool                transform_dirty_;
-  vbuffer_t           vertices_;
-  fbuffer_t           faces_;
-  sbuffer_t           stages_;
+  vertex_buffer_t           vertices_;
+  face_buffer_t           faces_;
+  stage_buffer_t           stages_;
 };
 
 

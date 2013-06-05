@@ -156,9 +156,8 @@ public:
 
   GLint     max_texture_size() const;
 
-  static
-  bool      can_create_texture(const GLint level, const GLint internalFormat,
-                               const GLsizei width, const GLsizei height);
+  static bool can_create_texture(const GLint level, const GLint internalFormat,
+                                 const GLsizei width, const GLsizei height);
 
 
 

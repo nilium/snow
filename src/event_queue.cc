@@ -235,24 +235,24 @@ void event_queue_t::set_window_callbacks(GLFWwindow *window, int events_mask)
 *                        Event callback implementations                        *
 *******************************************************************************/
 
-void event_queue_t::ecb_key_event(GLFWwindow *window, int key, int action)
+void event_queue_t::ecb_key_event(GLFWwindow *window, int key, int action, int mods)
 {
   auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
   if (queue) {
     event_t event = {EVENT_SENDER_WINDOW, {window}, KEY_EVENT, queue->frame_time_};
-    event.key = {key, action};
+    event.key = {key, action, mods};
     queue->emit_event(event);
   }
 }
 
 
 
-void event_queue_t::ecb_mouse_event(GLFWwindow *window, int button, int action)
+void event_queue_t::ecb_mouse_event(GLFWwindow *window, int button, int action, int mods)
 {
   auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
   if (queue) {
     event_t event = {EVENT_SENDER_WINDOW, {window}, MOUSE_EVENT, queue->frame_time_};
-    event.mouse = {button, action};
+    event.mouse = {button, action, mods};
     queue->emit_event(event);
   }
 }

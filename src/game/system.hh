@@ -12,6 +12,8 @@ struct event_t;
 
 struct system_t
 {
+  virtual ~system_t() = 0;
+
   /*==============================================================================
     active / set_active(bool)
 

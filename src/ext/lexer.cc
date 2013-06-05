@@ -18,7 +18,9 @@ namespace snow {
 #define MIN_STRING_STORAGE        (64)
 
 
-static const std::vector<string> token_descriptors {
+namespace {
+
+const std::vector<string> token_descriptors {
   "invalid",
 
   "true",
@@ -88,7 +90,11 @@ static const std::vector<string> token_descriptors {
   "/* comment */",
 };
 
-static const string g_newline_str = "\n";
+
+const string g_newline_str = "\n";
+
+
+} // namespace <anon>
 
 
 
@@ -249,7 +255,6 @@ void lexer_t::skip_whitespace()
 
 void lexer_t::read_base_number(token_t &token)
 {
-  token_mark_t mark = current_mark();
   token.kind = TOK_INVALID;
 
   uint32_t cur = read_next();
@@ -328,7 +333,6 @@ void lexer_t::read_number(token_t &token)
 
 void lexer_t::read_word(token_t &token)
 {
-  token_mark_t mark = current_mark();
   token.kind = TOK_ID;
 
   uint32_t cur;
@@ -366,7 +370,7 @@ void lexer_t::read_word(token_t &token)
 
 void lexer_t::read_string(token_t &token, const uint32_t delim)
 {
-  uint32_t cur = current_.code;
+  uint32_t cur;
   token_mark_t mark = current_mark();
   bool escape = false;
   token.kind = delim == '"' ? TOK_DOUBLE_STRING_LIT : TOK_SINGLE_STRING_LIT;
@@ -453,9 +457,10 @@ void lexer_t::read_line_comment(token_t &token)
 void lexer_t::read_block_comment(token_t &token)
 {
   const token_mark_t mark = current_mark();
-  uint32_t cur = read_next();
+  uint32_t cur;
   token.kind = TOK_BLOCK_COMMENT;
 
+  read_next();
   while ((cur = read_next())) {
     if (cur == '*' && (cur = peek_next() == '/')) {
       read_next();
@@ -496,7 +501,6 @@ lexer_error_t lexer_t::run(string::const_iterator &begin, const string::const_it
 
   const bool skip_com = skip_comments_;
   const bool skip_nl = skip_newlines_;
-  bool result = true;
 
   current_.code = 0;
   current_.place = begin;

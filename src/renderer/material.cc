@@ -4,36 +4,310 @@
 #include "program.hh"
 #include "constants.hh"
 #include <cassert>
+#include <vector>
 
 namespace snow {
 
-constexpr const GLint UNIFORM_NOT_TESTED = -2;
-constexpr const GLint NO_UNIFORM = -1;
 
-static const rpass_t DEFAULT_PASS = {
+enum : GLint
+{
+  /*! Uniform value for uniforms that should be looked up by name. */
+  UNIFORM_NOT_TESTED = -2,
+  /*! Uniforms that either do not exist or could not be found in a program. */
+  NO_UNIFORM = -1,
+};
+
+
+using uniform_map_t = std::map<int, rcustom_uniform_t>;
+
+
+namespace {
+
+const rpass_t DEFAULT_PASS = {
   false, // skip
   { GL_ONE, GL_ZERO }, // blend
   { GL_LESS, GL_TRUE }, // depth
-  { ~(GLuint)0, GL_ALWAYS, ~(GLuint)0, 0, GL_KEEP, GL_KEEP, GL_KEEP }, // stencil
+  { ~(GLuint)0, GL_ALWAYS, 0, ~(GLuint)0, GL_KEEP, GL_KEEP, GL_KEEP }, // stencil
   nullptr, // program
-  UNIFORM_NOT_TESTED, // modelview_
-  UNIFORM_NOT_TESTED, // projection_
   {
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED },
-    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT, UNIFORM_NOT_TESTED }
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT },
+    { nullptr, GL_LINEAR, GL_LINEAR, GL_REPEAT, GL_REPEAT }
   } // textures[8]
 };
 
-static rpass_t g_pass = DEFAULT_PASS;
 
-static mat4f_t g_projection = mat4f_t::identity;
-static mat4f_t g_modelview = mat4f_t::identity;
+rpass_t g_pass = DEFAULT_PASS;
+
+
+const uniform_map_t g_default_uniforms {
+  { UNIFORM_MODELVIEW,        rcustom_uniform_t( mat4f_t::identity      ) },
+  { UNIFORM_PROJECTION,       rcustom_uniform_t( mat4f_t::identity      ) },
+  { UNIFORM_TEXTURE_MATRIX,   rcustom_uniform_t( mat4f_t::identity      ) },
+  { UNIFORM_TEXTURE0,         rcustom_uniform_t(GLint(0)    ) },
+  { UNIFORM_TEXTURE1,         rcustom_uniform_t(GLint(1)) },
+  { UNIFORM_TEXTURE2,         rcustom_uniform_t(GLint(2)) },
+  { UNIFORM_TEXTURE3,         rcustom_uniform_t(GLint(3)) },
+  { UNIFORM_TEXTURE4,         rcustom_uniform_t(GLint(4)) },
+  { UNIFORM_TEXTURE5,         rcustom_uniform_t(GLint(5)) },
+  { UNIFORM_TEXTURE6,         rcustom_uniform_t(GLint(6)) },
+  { UNIFORM_TEXTURE7,         rcustom_uniform_t(GLint(7)) },
+};
+
+
+uniform_map_t g_uniforms = g_default_uniforms;
+
+
+} // namespace <anon>
+
+
+
+rcustom_uniform_t::rcustom_uniform_t() :
+  count(1),
+  kind(FLOAT),
+  is_opaque(false),
+  mat4(mat4f_t::identity)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(GLfloat value) :
+  count(1),
+  kind(FLOAT),
+  is_opaque(false),
+  float_value(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec2f_t &value) :
+  count(1),
+  kind(VEC2F),
+  is_opaque(false),
+  vec2f(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec3f_t &value) :
+  count(1),
+  kind(VEC3F),
+  is_opaque(false),
+  vec3f(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec4f_t &value) :
+  count(1),
+  kind(VEC4F),
+  is_opaque(false),
+  vec4f(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(GLint value) :
+  count(1),
+  kind(INT),
+  is_opaque(false),
+  int_value(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec2_t<GLint> &value) :
+  count(1),
+  kind(VEC2I),
+  is_opaque(false),
+  vec2i(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec3_t<GLint> &value) :
+  count(1),
+  kind(VEC3I),
+  is_opaque(false),
+  vec3i(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec4_t<GLint> &value) :
+  count(1),
+  kind(VEC4I),
+  is_opaque(false),
+  vec4i(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(GLuint value) :
+  count(1),
+  kind(UNSIGNED),
+  is_opaque(false),
+  unsigned_value(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec2_t<GLuint> &value) :
+  count(1),
+  kind(VEC2U),
+  is_opaque(false),
+  vec2u(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec3_t<GLuint> &value) :
+  count(1),
+  kind(VEC3U),
+  is_opaque(false),
+  vec3u(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const vec4_t<GLuint> &value) :
+  count(1),
+  kind(VEC4U),
+  is_opaque(false),
+  vec4u(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const mat3f_t &value) :
+  count(1),
+  kind(MAT3F),
+  is_opaque(false),
+  mat3(value)
+{
+  /* nop */
+}
+
+
+
+rcustom_uniform_t::rcustom_uniform_t(const mat4f_t &value) :
+  count(1),
+  kind(MAT4F),
+  is_opaque(false),
+  mat4(value)
+{
+  /* nop */
+}
+
+
+
+void rcustom_uniform_t::apply(const rprogram_t &program, int name, GLint uniform_location_hint) const
+{
+  const GLint uniform_location =
+    (uniform_location_hint > NO_UNIFORM)
+    ? uniform_location_hint
+    : program.uniform_location(name);
+
+  if (uniform_location == NO_UNIFORM) {
+    return;
+  }
+
+  assert(count >= 1);
+
+  #define PTR_OR_VAL(NAME, TYPE) (const TYPE *)(is_opaque ? opaque : &NAME)
+
+  switch (kind) {
+  case FLOAT:
+    glUniform1fv(uniform_location, count, PTR_OR_VAL(float_value, GLfloat));
+    break;
+  case VEC2F:
+    glUniform2fv(uniform_location, count, PTR_OR_VAL(vec2f, GLfloat));
+    break;
+  case VEC3F:
+    glUniform3fv(uniform_location, count, PTR_OR_VAL(vec3f, GLfloat));
+    break;
+  case VEC4F:
+    glUniform4fv(uniform_location, count, PTR_OR_VAL(vec4f, GLfloat));
+    break;
+  case INT:
+    glUniform1iv(uniform_location, count, PTR_OR_VAL(int_value, GLint));
+    break;
+  case VEC2I:
+    glUniform2iv(uniform_location, count, PTR_OR_VAL(vec2i, GLint));
+    break;
+  case VEC3I:
+    glUniform3iv(uniform_location, count, PTR_OR_VAL(vec3i, GLint));
+    break;
+  case VEC4I:
+    glUniform4iv(uniform_location, count, PTR_OR_VAL(vec4i, GLint));
+    break;
+  case UNSIGNED:
+    glUniform1uiv(uniform_location, count, PTR_OR_VAL(unsigned_value, GLuint));
+    break;
+  case VEC2U:
+    glUniform2uiv(uniform_location, count, PTR_OR_VAL(vec2u, GLuint));
+    break;
+  case VEC3U:
+    glUniform3uiv(uniform_location, count, PTR_OR_VAL(vec3u, GLuint));
+    break;
+  case VEC4U:
+    glUniform4uiv(uniform_location, count, PTR_OR_VAL(vec4u, GLuint));
+    break;
+  case MAT2F:
+    glUniformMatrix2fv(uniform_location, count, GL_FALSE, PTR_OR_VAL(mat3, GLfloat));
+    break;
+  case MAT3F:
+    glUniformMatrix3fv(uniform_location, count, GL_FALSE, PTR_OR_VAL(mat3, GLfloat));
+    break;
+  case MAT4F:
+    glUniformMatrix4fv(uniform_location, count, GL_FALSE, PTR_OR_VAL(mat4, GLfloat));
+    break;
+  default:
+    s_throw(std::runtime_error, "Invalid uniform type");
+    return;
+  // case MAT23F:
+  // case MAT24F:
+  // case MAT32F:
+  // case MAT42F:
+  // case MAT34F:
+  // case MAT43F:
+  }
+
+  assert_gl("Setting uniform");
+
+  #undef PTR_OR_VAL
+}
 
 
 
@@ -45,6 +319,7 @@ void rpass_t::apply() const
     );
   if (blend_func_changed) {
     glBlendFunc(blend.sfactor, blend.dfactor);
+    g_pass.blend = blend;
     assert_gl("Setting blend function");
   }
 
@@ -57,6 +332,7 @@ void rpass_t::apply() const
     glDepthMask(depth.write);
     assert_gl("Setting depth write");
   }
+  g_pass.depth = depth;
 
   if (stencil.mask != g_pass.stencil.mask) {
     glStencilMask(stencil.mask);
@@ -82,62 +358,50 @@ void rpass_t::apply() const
     glStencilOp(stencil.fail, stencil.depth_fail, stencil.depth_pass);
     assert_gl("Setting stencil op");
   }
+  g_pass.stencil = stencil;
 
   if (!program) {
-    goto pass_finished;
-  }
-
-  if (program != g_pass.program) {
+    glUseProgram(0);
+    g_pass.program = nullptr;
+    return;
+  } else if (program != g_pass.program) {
     program->use();
-    if (modelview_ == UNIFORM_NOT_TESTED) {
-      modelview_ = program->uniform_location(UNIFORM_MODELVIEW);
-    }
-    if (modelview_ != -1) {
-      glUniformMatrix4fv(modelview_, 1, GL_FALSE, g_modelview);
-    }
-    if (projection_ == UNIFORM_NOT_TESTED) {
-      projection_ = program->uniform_location(UNIFORM_PROJECTION);
-    }
-    if (projection_ != -1) {
-      glUniformMatrix4fv(projection_, 1, GL_FALSE, g_projection);
-    }
+    g_pass.program = program;
   }
 
   for (GLuint index = 0; index < MAX_TEXTURE_UNITS; ++index) {
-    glActiveTexture(GL_TEXTURE0 + index);
-    GLint &uniform = textures[index].uniform_;
-
-    if (uniform == UNIFORM_NOT_TESTED) {
-      uniform = program->uniform_location(UNIFORM_TEXTURE0 + index);
-    }
-
-    if (uniform == NO_UNIFORM) {
-      continue;
-    }
-
-    const GLenum target = textures[index].texture->target();
     rtexture_t *texture = textures[index].texture;
 
     if (texture != g_pass.textures[index].texture) {
+      glActiveTexture(GL_TEXTURE0 + index);
+      assert_gl("Setting active texture unit");
       if (texture) {
         textures[index].texture->bind();
       }
     }
 
     if (!texture) {
-      continue;
+      // If there's no texture in this unit, all further units must be empty
+      // as well (or the pass is malformed)
+      break;
     }
 
-    glTexParameteri(target, GL_TEXTURE_MIN_FILTER, textures[index].min_filter);
-    glTexParameteri(target, GL_TEXTURE_MAG_FILTER, textures[index].mag_filter);
-    glTexParameteri(target, GL_TEXTURE_WRAP_S, textures[index].x_wrap);
-    glTexParameteri(target, GL_TEXTURE_WRAP_T, textures[index].y_wrap);
+    texture->set_filters(textures[index].mag_filter, textures[index].min_filter);
+    texture->set_wrapping(textures[index].x_wrap, textures[index].y_wrap);
 
-    glUniform1i(uniform, index);
+    g_pass.textures[index] = textures[index];
+
+    assert_gl("Binding texture uniform");
   }
 
-pass_finished:
-  g_pass = *this;
+  // Because there's no diff for uniform state (yet), apply them per-pass
+  rmaterial_t::apply_uniforms(*program);
+
+  #ifndef NDEBUG
+  if (!program->validate()) {
+    s_throw(std::runtime_error, "Shader failed validation: %s", program->error_string().c_str());
+  }
+  #endif
 }
 
 
@@ -223,19 +487,63 @@ const rpass_t &rmaterial_t::pass(size_t pass) const
 
 void rmaterial_t::set_projection(const mat4f_t &proj)
 {
-  g_projection = proj;
+  set_uniform(UNIFORM_PROJECTION, rcustom_uniform_t(proj));
+  // g_projection = proj;
 }
 
 
 
 void rmaterial_t::set_modelview(const mat4f_t &mv)
 {
-  g_modelview = mv;
+  set_uniform(UNIFORM_MODELVIEW, rcustom_uniform_t(mv));
+  // g_modelview = mv;
 }
 
 
 
+void rmaterial_t::set_texture_matrix(const mat4f_t &tm)
+{
+  set_uniform(UNIFORM_TEXTURE_MATRIX, rcustom_uniform_t(tm));
+  // g_texture_matrix = tm;
+}
 
+
+
+void rmaterial_t::set_uniform(int name, const rcustom_uniform_t &uniform)
+{
+  g_uniforms[name] = uniform;
+}
+
+
+
+void rmaterial_t::unset_uniform(int name)
+{
+  const uniform_map_t::const_iterator found_name = g_uniforms.find(name);
+  if (found_name != g_uniforms.cend()) {
+    g_uniforms.erase(found_name);
+  }
+}
+
+
+
+void rmaterial_t::clear_uniforms()
+{
+  g_uniforms = g_default_uniforms;
+}
+
+
+
+void rmaterial_t::apply_uniforms(const rprogram_t &program)
+{
+  uniform_map_t::const_iterator found_name;
+  const uniform_map_t::const_iterator end = g_uniforms.cend();
+  for (const auto &binding : program.bound_uniforms()) {
+    found_name = g_uniforms.find(binding.first);
+    if (found_name != end) {
+      found_name->second.apply(program, binding.first, binding.second.first);
+    }
+  }
+}
 
 
 } // namespace snow

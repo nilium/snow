@@ -35,12 +35,12 @@ struct rfont_t
   auto bbox_min() const -> const vec2f_t &;
   auto bbox_max() const -> const vec2f_t &;
 
-  auto font_page_count() const -> int;
+  auto font_page_count() const -> size_t;
   void set_font_page(int page, rmaterial_t *mat);
   auto font_page(int page) const -> rmaterial_t *;
 
   void draw_text(rdraw_2d_t &draw, const vec2f_t &baseline, const string &text,
-                 const vec4_t<uint8_t> &color = { 255, 255, 255, 255 },
+                 const vec4f_t &color = { 255, 255, 255, 255 },
                  bool ignore_newlines = true, float scale = 1.0f) const;
 
 

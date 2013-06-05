@@ -23,12 +23,30 @@ bool console_pane_t::event(const event_t &event)
   switch (event.kind) {
   case KEY_EVENT:
     switch (event.key.button) {
+    case GLFW_KEY_BACKSPACE:
+      if (!buffer_.empty()) {
+        auto end = buffer_.cend();
+        auto iter = buffer_.cbegin();
+        auto codes = u8::distance(iter, end);
+        if (codes > 1) {
+          u8::advance(iter, codes - 1);
+          buffer_.erase(iter, end);
+        } else {
+          buffer_.clear();
+        }
+      }
+
+      propagate = false;
+      break;
+
     case GLFW_KEY_F12:
       if (event.key.action) {
         open_ = !open_;
+        #if HIDE_CURSOR_ON_CONSOLE_CLOSE
         if (wnd_mouseMode) {
           wnd_mouseMode->seti(open_);
         }
+        #endif
       }
       propagate = false;
       break;
@@ -49,8 +67,7 @@ bool console_pane_t::event(const event_t &event)
 
       buffer_.clear();
       break;
-    default:
-      break;
+    default: propagate = !open_; break;
     }
     break;
 
@@ -59,21 +76,7 @@ bool console_pane_t::event(const event_t &event)
       break;
     }
 
-    if (event.character == '\b') {
-      if (!buffer_.empty()) {
-        auto end = buffer_.cend();
-        auto iter = buffer_.cbegin();
-        auto codes = u8::distance(iter, end);
-        if (codes > 1) {
-          u8::advance(iter, codes - 1);
-          buffer_.erase(iter, end);
-        } else {
-          buffer_.clear();
-        }
-      }
-
-      propagate = false;
-    } else if (event.character >= ' ' && event.character <= '~') {
+    if (event.character >= ' ' && event.character <= '~') {
       // FIXME: handle non-ASCII characters
       u8::append(event.character, std::back_inserter(buffer_));
       propagate = false;
@@ -113,8 +116,8 @@ void console_pane_t::draw(double timeslice)
     return;
   }
 
-  const uint8_t alpha = uint8_t((top_ * 255) / CONSOLE_HEIGHT);
-  const vec4_t<uint8_t> tint = { 255, 255, 255, alpha };
+  const float alpha = float(top_) / float(CONSOLE_HEIGHT);
+  const vec4f_t tint = { 1.0, 1.0, 1.0, alpha };
   const vec2f_t screen_size = drawer_->offset_to_screen({ 1, 1 });
   vec2f_t size = screen_size;
   vec2f_t pos = { 0, size.y - top_ };
@@ -190,9 +193,13 @@ rdraw_2d_t *console_pane_t::drawer() const
 void console_pane_t::set_cvar_set(cvar_set_t *cvars)
 {
   cvars_ = cvars;
+  #if HIDE_CURSOR_ON_CONSOLE_CLOSE
   if (cvars_) {
-    wnd_mouseMode = cvars_->get_cvar("wnd_mouseMode", false, CVAR_DELAYED | CVAR_INVISIBLE);
+    wnd_mouseMode = cvars_->get_cvar("wnd_mouseMode", true, CVAR_DELAYED | CVAR_INVISIBLE);
+  } else {
+    wnd_mouseMode = nullptr;
   }
+  #endif
 }
 
 
@@ -214,10 +221,18 @@ void console_pane_t::write_log(const string &message)
 
 
 
+namespace {
+
+
+console_pane_t g_default_console_pane;
+
+
+} // namespace <anon>
+
+
 console_pane_t &default_console()
 {
-  static console_pane_t pane;
-  return pane;
+  return g_default_console_pane;
 }
 
 

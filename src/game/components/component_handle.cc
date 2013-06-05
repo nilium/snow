@@ -19,7 +19,7 @@ struct hash_handle_t {
 
 
 
-using component_map_t = typename std::conditional<sizeof(size_t) >= 8,
+using component_map_t = typename std::conditional<true, //sizeof(size_t) >= 8,
   std::unordered_map<component_handle_t, component_base_t *, hash_handle_t>,
   std::map<component_handle_t, component_base_t *> >::type;
 // using component_map_t = std::unordered_map<component_handle_t, component_base_t *, hash_handle_t>;

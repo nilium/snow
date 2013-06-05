@@ -14,6 +14,6 @@
 #include "sgl_enums.hh"
 
 #define GLFW_INCLUDE_GLCOREARB
-#include <gl/glfw3.h>
+#include <glfw/glfw3.h>
 
 #endif /* end __SNOW__SGL_HH__ include guard */

@@ -21,6 +21,6 @@ static_assert(std::numeric_limits<double>::is_iec559, "float is not IEEE 754 com
 
 // Libraries
 #include <physfs.h>
-#include <sqlite3.h>
+#include "ext/sqlite3.h"
 
 #endif /* end __SNOW__CONFIG_HH__ include guard */

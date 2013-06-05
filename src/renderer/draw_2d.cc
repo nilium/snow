@@ -14,6 +14,9 @@ constexpr size_t DEFAULT_VERTEX_CAPACITY = DEFAULT_FACE_CAPACITY * 2;
 
 
 
+/*!
+  Constructor
+*/
 rdraw_2d_t::rdraw_2d_t() :
   transform_(mat3f_t::identity),
   scale_(vec2f_t::one),
@@ -32,6 +35,9 @@ rdraw_2d_t::rdraw_2d_t() :
 
 
 
+/*!
+  Move constructor
+*/
 rdraw_2d_t::rdraw_2d_t(rdraw_2d_t &&other) :
   transform_(other.transform_),
   scale_(other.scale_),
@@ -49,6 +55,9 @@ rdraw_2d_t::rdraw_2d_t(rdraw_2d_t &&other) :
 
 
 
+/*!
+  Copy-assignment operator
+*/
 rdraw_2d_t &rdraw_2d_t::operator = (const rdraw_2d_t &other)
 {
   if (&other != this) {
@@ -68,6 +77,9 @@ rdraw_2d_t &rdraw_2d_t::operator = (const rdraw_2d_t &other)
 
 
 
+/*!
+  Move-assignment operator
+*/
 rdraw_2d_t &rdraw_2d_t::operator = (rdraw_2d_t &&other)
 {
   if (&other != this) {
@@ -89,48 +101,42 @@ rdraw_2d_t &rdraw_2d_t::operator = (rdraw_2d_t &&other)
 
 
 
-void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices, GLintptr ib_where)
+/*!
+  Draws the contents of the 2D drawer using the given vertex array object. The
+  VAO must have been previously built using build_vertex_array.
+
+  \param in vao The vertex array object. This must have been ubilt using
+  build_vertex_array.
+  \param in ib_where The offset into the element array buffer associated with
+  the vertex array object that the index data is.
+*/
+void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, GLintptr ib_where)
 {
   constexpr float Z_MIN = -10;
   constexpr float Z_MAX = 10;
 
   vao.bind();
-  indices.bind();
 
   int index = 0;
-  mat4f_t projection;
-  vec2_t<int16_t> screen = {0, 0};
-  bool set_proj = true;
   const auto length = stages_.size();
-  const draw_stage_t *stage_data = stages_.data();
   rmaterial_t *cur_material = nullptr;
+  rmaterial_t::set_projection(
+    mat4f_t::orthographic(0, screen_size_.x, screen_size_.y, 0, Z_MIN, Z_MAX));
 
   for (; index < length; ++index) {
-    const draw_stage_t &current = stage_data[index];
+    #ifdef NDEBUG
+    const draw_stage_t &current = stages_[index];
+    #else
+    const draw_stage_t &current = stages_.at(index);
+    #endif
 
-    if (current.screen_size != screen) {
-      // rebuild projection matrix if needed
-      screen = current.screen_size;
-      projection = mat4f_t::orthographic(0, screen.x, screen.y, 0, Z_MIN, Z_MAX);
-      set_proj = true;
-    }
-
-    if (cur_material != current.material) {
-      cur_material = current.material;
-      cur_material->set_modelview(mat4f_t::identity);
-      set_proj = true;
-    }
-
+    cur_material = current.material;
     if (!cur_material) {
-      s_throw(std::runtime_error, "Material is null");
+      s_log_note("Skipping empty material draw");
+      continue;
     }
 
-    if (set_proj) {
-      cur_material->set_projection(projection);
-      set_proj = false;
-    }
-
-    const int passes = cur_material->num_passes();
+    const size_t passes = cur_material->num_passes();
     for (int pass = 0; pass < passes; ++pass) {
       cur_material->prepare_pass(pass);
       GLvoid *offset = (GLvoid *)(ib_where + (current.base_index * sizeof(uint16_t)));
@@ -141,10 +147,17 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, rbuffer_t &indices
   }
 
   glBindVertexArray(0);
+  assert_gl("Unbinding vertex array object");
 }
 
 
 
+/*!
+  Buffers the vertex data into a buffer object at the given location.
+
+  \param in buffer The buffer object to store the vertex data.
+  \param in vb_where The location in the buffer object to place the vertex data.
+*/
 void rdraw_2d_t::buffer_vertices(rbuffer_t &buffer, GLintptr vb_where)
 {
   const GLsizeiptr vb_size = vertex_buffer_size();
@@ -159,10 +172,18 @@ void rdraw_2d_t::buffer_vertices(rbuffer_t &buffer, GLintptr vb_where)
   // positions
   glBufferSubData(GL_ARRAY_BUFFER, vb_where, vb_size, vertices_.data());
   assert_gl("Buffering 2D vertices");
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  assert_gl("Unbinding vertex array object");
 }
 
 
 
+/*!
+  Buffers the index data into a buffer object at the given location.
+
+  \param in buffer The buffer object to store the index data.
+  \param in ib_where The location in the buffer object to place the index data.
+*/
 void rdraw_2d_t::buffer_indices(rbuffer_t &buffer, GLintptr ib_where)
 {
   // Buffer indices:
@@ -176,24 +197,31 @@ void rdraw_2d_t::buffer_indices(rbuffer_t &buffer, GLintptr ib_where)
   buffer.bind_as(GL_ELEMENT_ARRAY_BUFFER);
   glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, ib_where, ib_size, faces_.data());
   assert_gl("Buffering 2D indices");
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  assert_gl("Unbinding element array object");
 }
 
 
 
 rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
   const GLuint tex_attrib, const GLuint col_attrib, rbuffer_t &vertices,
-  const GLintptr vb_where)
+  const GLintptr vb_where, rbuffer_t &indices)
 {
   rvertex_array_t vao;
 
   // Build vao without initializer
+
+  indices.bind_as(GL_ELEMENT_ARRAY_BUFFER);
   vao.bind();
-  vertices.bind();
+  vertices.bind_as(GL_ARRAY_BUFFER);
 
   // Enable attribute arrays
   glEnableVertexAttribArray(pos_attrib);
+  assert_gl("Enabling position attribute");
   glEnableVertexAttribArray(col_attrib);
+  assert_gl("Enabling color attribute");
   glEnableVertexAttribArray(tex_attrib);
+  assert_gl("Enabling texcoord attribute");
 
   // Bind vertex attributes to buffer offsets
   glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
@@ -202,9 +230,18 @@ rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
   glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
     (const GLvoid *)(vb_where + offsetof(vertex_t, texcoord)));
   assert_gl("Setting vertex texture coords attrib");
-  glVertexAttribPointer(col_attrib, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(vertex_t),
+  glVertexAttribPointer(col_attrib, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
     (const GLvoid *)(vb_where + offsetof(vertex_t, color)));
   assert_gl("Setting vertex color attrib");
+
+  indices.bind_as(GL_ELEMENT_ARRAY_BUFFER);
+
+  glBindVertexArray(0);
+  assert_gl("Unbinding vertex array object");
+  glBindBuffer(GL_ARRAY_BUFFER, 0);
+  assert_gl("Unbinding array buffer");
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+  assert_gl("Unbinding element array buffer");
 
   return vao;
 }
@@ -220,7 +257,15 @@ GLsizeiptr rdraw_2d_t::vertex_buffer_size() const
 
 GLsizeiptr rdraw_2d_t::index_buffer_size() const
 {
-  return faces_.size() * sizeof(fbuffer_t::value_type);
+  return faces_.size() * sizeof(face_buffer_t::value_type);
+}
+
+
+
+void rdraw_2d_t::clear_buffers()
+{
+  vertices_.clear();
+  faces_.clear();
 }
 
 
@@ -256,7 +301,7 @@ void rdraw_2d_t::reset_and_clear()
 
 
 void rdraw_2d_t::draw_offset_rect(const vec2f_t &pos, const vec2f_t &size,
-  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec4f_t &color, rmaterial_t *material,
   const vec2f_t &uv_min, const vec2f_t &uv_max)
 {
   draw_rect(offset_to_screen(pos), size, color, material, uv_min, uv_max);
@@ -265,7 +310,7 @@ void rdraw_2d_t::draw_offset_rect(const vec2f_t &pos, const vec2f_t &size,
 
 
 void rdraw_2d_t::draw_offset_rect_raw(const vec2f_t &pos, const vec2f_t &size,
-  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec4f_t &color, rmaterial_t *material,
   const vec2f_t &uv_min, const vec2f_t &uv_max)
 {
   draw_rect_raw(offset_to_screen(pos), size, color, material, uv_min, uv_max);
@@ -274,7 +319,7 @@ void rdraw_2d_t::draw_offset_rect_raw(const vec2f_t &pos, const vec2f_t &size,
 
 
 void rdraw_2d_t::draw_rect(const vec2f_t &pos, const vec2f_t &size,
-  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec4f_t &color, rmaterial_t *material,
   const vec2f_t &uv_min, const vec2f_t &uv_max)
 {
   draw_stage_t &stage = push_draw_stage(material, 4);
@@ -324,12 +369,13 @@ void rdraw_2d_t::draw_rect(const vec2f_t &pos, const vec2f_t &size,
   faces_.push_back({ base_vertex, bv2, bv3 });
 
   stage.num_indices += 6;
+  stage.num_vertices += 4;
 }
 
 
 
 void rdraw_2d_t::draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
-  const vec4_t<uint8_t> &color, rmaterial_t *const material,
+  const vec4f_t &color, rmaterial_t *material,
   const vec2f_t &uv_min, const vec2f_t &uv_max)
 {
   draw_stage_t &stage = push_draw_stage(material, 4);
@@ -369,15 +415,18 @@ void rdraw_2d_t::draw_rect_raw(const vec2f_t &pos, const vec2f_t &size,
   faces_.push_back({ base_vertex, bv2, bv3 });
 
   stage.num_indices += 6;
+  stage.num_vertices += 4;
 }
 
 
 
 void rdraw_2d_t::draw_triangles(
-  const vertex_t *const verts, const GLsizeiptr num_verts,
-  const face_t *const tris, const GLsizeiptr num_tris,
-  rmaterial_t *const material)
+  const vertex_t *verts, const GLint num_verts,
+  const face_t *tris, const GLint num_tris,
+  rmaterial_t *material)
 {
+  assert(num_verts > 0);
+  assert(num_tris > 0);
   draw_stage_t &stage = push_draw_stage(material, num_verts);
 
   const auto vb_length = vertices_.size();
@@ -394,11 +443,14 @@ void rdraw_2d_t::draw_triangles(
     face.v2 += base_vertex;
     faces_.push_back(face);
   }
+
+  stage.num_indices += num_tris * 3;
+  stage.num_vertices += num_verts;
 }
 
 
 
-void rdraw_2d_t::draw_triangle(const vertex_t vertices[3], rmaterial_t *const material)
+void rdraw_2d_t::draw_triangle(const vertex_t vertices[3], rmaterial_t *material)
 {
   static const face_t face = { 0, 1, 2 };
   draw_triangles(vertices, 3, &face, 1, material);
@@ -457,7 +509,7 @@ vec2f_t rdraw_2d_t::offset_to_screen(const vec2f_t &v) const
 
 
 
-auto rdraw_2d_t::push_draw_stage(rmaterial_t *const material,
+auto rdraw_2d_t::push_draw_stage(rmaterial_t *material,
   const GLint vertices_needed) -> draw_stage_t &
 {
   if (material == NULL) {
@@ -469,7 +521,6 @@ auto rdraw_2d_t::push_draw_stage(rmaterial_t *const material,
     // hanging around.
     draw_stage_t &current = stages_.back();
     if (material == current.material &&
-        screen_size_ == current.screen_size &&
         (current.num_vertices + vertices_needed) < UINT16_MAX) {
       return current;
     }
@@ -499,9 +550,8 @@ const mat3f_t &rdraw_2d_t::vertex_transform()
 
 rdraw_2d_t::draw_stage_t::draw_stage_t(const rdraw_2d_t &draw, rmaterial_t *mat)
 : material(mat),
-  base_index(draw.faces_.size() * 3),
-  base_vertex(draw.vertices_.size()),
-  screen_size(draw.screen_size_),
+  base_index((GLint)draw.faces_.size() * 3),
+  base_vertex((GLint)draw.vertices_.size()),
   num_vertices(0),
   num_indices(0)
 {}
