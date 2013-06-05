@@ -225,34 +225,7 @@ void client_t::run_frameloop()
 ==============================================================================*/
 void client_t::frameloop()
 {
-  // (new Fl_Pack(2, 2, 196, 196, "Surface Properties"))->type(Fl_Pack::VERTICAL);
-  #define STEPPER_WIDTH 56
-  #define STEPPER_HEIGHT 24
-  #define OFFSET_STEP_LABEL_WIDTH 64
-  #define OFFSET_STEP_X OFFSET_STEP_LABEL_WIDTH
-  #define STEP_STEP_LABEL_WIDTH 48
-  #define STEP_STEP_X OFFSET_STEP_X + STEPPER_WIDTH + STEP_STEP_LABEL_WIDTH
-  Fl_Window *flwindow = new Fl_Window(STEP_STEP_X + STEPPER_WIDTH + 4 + 8, 500);
-  Fl_Group *group = new Fl_Group(4, 20, STEP_STEP_X + STEPPER_WIDTH + 4, 4 + 4 * (STEPPER_HEIGHT + 4), "Surface Properties");
-  group->box(FL_UP_FRAME);
-  const char *offname[] = {
-    "X Offset",
-    "Y Offset",
-    "X Scale",
-    "Y Scale",
-  };
-  for (int x = 0; x < 4; ++x) {
-    // Fl_Pack *pack = new Fl_Pack(2, 2, 196, 24, "Surface Properties");
-    // pack->type(Fl_Pack::HORIZONTAL);
-
-    Fl_Spinner *off = new Fl_Spinner(OFFSET_STEP_X, 24 + x * (STEPPER_HEIGHT + 4), STEPPER_WIDTH, STEPPER_HEIGHT, offname[x]);
-    Fl_Spinner *step = new Fl_Spinner(STEP_STEP_X, 24 + x * (STEPPER_HEIGHT + 4), STEPPER_WIDTH, STEPPER_HEIGHT, "Step");
-    // pack->end();
-  }
-
-  flwindow->end();
-  flwindow->show();
-
+  // FIXME: Almost all of this crap should be moved to game-specific code.
   console_pane_t &console = default_console();
   s_set_log_callback(cl_log_callback, &console);
 
