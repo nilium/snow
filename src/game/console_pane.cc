@@ -5,11 +5,14 @@
 #include "../console.hh"
 #include "../ext/utf8/unchecked.h"
 #include "../event_queue.hh"
+#include "resources.hh"
 
 
 namespace u8 = utf8::unchecked;
 
 
+#define VERTEX_OFFSET   (0)
+#define INDEX_OFFSET    (0)
 #define CONSOLE_HEIGHT (300)
 #define CONSOLE_SPEED (30)
 
@@ -112,80 +115,54 @@ void console_pane_t::frame(double step, double timeslice)
 
 void console_pane_t::draw(double timeslice)
 {
-  if (drawer_ == nullptr) {
-    return;
+  resources_t &res = resources_t::default_resources();
+
+  if (!bg_mat_) {
+    bg_mat_ = res.load_material("console/background");
   }
+
+  if (!font_) {
+    font_ = res.load_font("console");
+    if (font_) {
+      font_scale_ = 20.0f / font_->line_height();
+    }
+  }
+
+  drawer_.clear();
 
   const float alpha = float(top_) / float(CONSOLE_HEIGHT);
   const vec4f_t tint = { 1.0, 1.0, 1.0, alpha };
-  const vec2f_t screen_size = drawer_->offset_to_screen({ 1, 1 });
+  const vec2f_t screen_size = drawer_.offset_to_screen({ 1, 1 });
   vec2f_t size = screen_size;
   vec2f_t pos = { 0, size.y - top_ };
 
   if (bg_mat_ != nullptr && top_) {
     size.y = CONSOLE_HEIGHT;
-    drawer_->draw_rect_raw(pos, size, tint, bg_mat_);
+    drawer_.draw_rect_raw(pos, size, tint, bg_mat_);
   }
 
   if (font_ != nullptr && top_ != 0) {
     const float line_height = std::ceil(font_->line_height() * font_scale_);
     vec2f_t buffer_pos = { 4, pos.y + std::ceil(font_->descent() * font_scale_) + 4};
-    font_->draw_text(*drawer_, buffer_pos, buffer_, tint, true, font_scale_);
+    font_->draw_text(drawer_, buffer_pos, buffer_, tint, true, font_scale_);
     buffer_pos.y += line_height + 10;
     for (const string &log_message : log_) {
-      font_->draw_text(*drawer_, buffer_pos, log_message, tint, true, font_scale_);
+      font_->draw_text(drawer_, buffer_pos, log_message, tint, true, font_scale_);
       buffer_pos.y += line_height;
       if (buffer_pos.y > screen_size.y) {
         break;
       }
     }
   }
-}
 
+  drawer_.buffer_vertices(vbuffer_, VERTEX_OFFSET);
+  drawer_.buffer_indices(ibuffer_, INDEX_OFFSET);
 
-void console_pane_t::set_background(rmaterial_t *bg_mat)
-{
-  bg_mat_ = bg_mat;
-}
-
-
-
-rmaterial_t *console_pane_t::background() const
-{
-  return bg_mat_;
-}
-
-
-
-void console_pane_t::set_font(rfont_t *font)
-{
-  font_ = font;
-  if (font) {
-    font_scale_ = 20.0f / font->line_height();
-  } else {
-    font_scale_ = 1.0f;
+  if (!vao_.generated()) {
+    vao_ = drawer_.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vbuffer_, VERTEX_OFFSET, ibuffer_);
   }
-}
 
-
-
-rfont_t *console_pane_t::font() const
-{
-  return font_;
-}
-
-
-
-void console_pane_t::set_drawer(rdraw_2d_t *drawer)
-{
-  drawer_ = drawer;
-}
-
-
-
-rdraw_2d_t *console_pane_t::drawer() const
-{
-  return drawer_;
+  drawer_.draw_with_vertex_array(vao_, INDEX_OFFSET);
 }
 
 

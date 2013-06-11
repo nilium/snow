@@ -1,22 +1,9 @@
 #include "cl_main.hh"
 #include "../game/system.hh"
-#include "../game/gameobject.hh"
 #include "../game/console_pane.hh"
-#include "../game/systems/player.hh"
-#include "../game/components/player_mover.hh"
 #include "../renderer/gl_error.hh"
-#include "../renderer/font.hh"
-#include "../renderer/draw_2d.hh"
-#include "../renderer/material.hh"
-#include "../renderer/texture.hh"
-#include "../renderer/buffer.hh"
-#include "../renderer/program.hh"
-#include "../renderer/shader.hh"
-#include "../renderer/vertex_array.hh"
-#include "../data/database.hh"
 #include "../timing.hh"
 #include <thread>
-#include <physfs.h>
 
 
 namespace snow {
@@ -202,21 +189,6 @@ void client_t::frameloop()
   unsigned frame, last_frame;
   frame = 1; last_frame = 0;
 
-  rdraw_2d_t drawer;
-  rbuffer_t indices(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 2048);
-  rbuffer_t vertices(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, 4096);
-  rvertex_array_t vao;
-
-  rfont_t *font = res_->load_font("console");
-  assert(font);
-  rmaterial_t *mat = res_->load_material("ui/console_font");
-  rmaterial_t *pmat = res_->load_material("actors/player");
-  rmaterial_t *bgmat = res_->load_material("ui/console_back");
-  font->set_font_page(0, mat);
-  console.set_font(font);
-  console.set_background(bgmat);
-  console.set_drawer(&drawer);
-
   add_system(&console, 65536);
 
   glClearColor(0.5, 0.5, 0.5, 1.0);
@@ -271,19 +243,7 @@ void client_t::frameloop()
         }
       }
 
-      drawer.draw_rect({400, 300}, {400, 300}, {1.0, 1.0, 0, 1.0}, pmat);
-      drawer.buffer_vertices(vertices, 0);
-      drawer.buffer_indices(indices, 0);
-
-      if (!vao.generated()) {
-        vao = drawer.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vertices, 0, indices);
-      }
-
-      drawer.draw_with_vertex_array(vao, 0);
-
       glfwSwapBuffers(window);
-
-      drawer.clear();
     }
 
     if (cl_willQuit->geti()) {
