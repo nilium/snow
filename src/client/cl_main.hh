@@ -107,6 +107,7 @@ private:
   cvar_t *wnd_focused;
   cvar_t *wnd_mouseMode;
   cvar_t *r_drawFrame;
+  cvar_t *r_clearFrame;
 };
 
 

@@ -170,6 +170,7 @@ void client_t::frameloop()
   wnd_focused = cvars_.get_cvar( "wnd_focused", 1, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
   wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", true, CVAR_DELAYED | CVAR_INVISIBLE);
   r_drawFrame = cvars_.get_cvar( "r_drawFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
+  r_clearFrame = cvars_.get_cvar("r_clearFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
 
   console.set_cvar_set(&cvars_);
 
@@ -233,8 +234,11 @@ void client_t::frameloop()
 
     if (frame != last_frame && r_drawFrame->geti()) {
       last_frame = frame;
-      glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-      assert_gl("Clearing buffers");
+
+      if (r_clearFrame->geti()) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        assert_gl("Clearing buffers");
+      }
 
       for (auto &spair : draw_systems_) {
         if (spair.second->active()) {
