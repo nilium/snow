@@ -59,11 +59,15 @@ enum event_kind_t : int
 };
 
 
-
 S_EXPORT const string &event_kind_string(int kind);
 
-const int EVENT_SENDER_UNKNOWN = 0;
-const int EVENT_SENDER_WINDOW = -1;
+
+enum : int
+{
+  EVENT_SENDER_WINDOW = -1,
+  EVENT_SENDER_UNKNOWN = 0,
+  EVENT_SENDER_NET = 1,
+};
 
 
 
