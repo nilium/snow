@@ -147,7 +147,7 @@ size_t rfont_t::font_page_count() const
 
     Sets the font page to the given material.
 ==============================================================================*/
-void rfont_t::set_font_page(int page, rmaterial_t *mat)
+void rfont_t::set_font_page(size_t page, rmaterial_t *mat)
 {
 
   pages_.at(page) = mat;
@@ -160,7 +160,7 @@ void rfont_t::set_font_page(int page, rmaterial_t *mat)
 
     Returns the font page for the given index (0..num_font_pages)
 ==============================================================================*/
-rmaterial_t *rfont_t::font_page(int page) const
+rmaterial_t *rfont_t::font_page(size_t page) const
 {
   return pages_.at(page);
 }

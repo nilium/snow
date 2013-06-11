@@ -36,8 +36,8 @@ struct rfont_t
   auto bbox_max() const -> const vec2f_t &;
 
   auto font_page_count() const -> size_t;
-  void set_font_page(int page, rmaterial_t *mat);
-  auto font_page(int page) const -> rmaterial_t *;
+  void set_font_page(size_t page, rmaterial_t *mat);
+  auto font_page(size_t page) const -> rmaterial_t *;
 
   void draw_text(rdraw_2d_t &draw, const vec2f_t &baseline, const string &text,
                  const vec4f_t &color = { 255, 255, 255, 255 },
