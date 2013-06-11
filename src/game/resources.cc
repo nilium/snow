@@ -383,6 +383,15 @@ void resources_t::release_font(rfont_t *font)
 {
   std::lock_guard<std::recursive_mutex> lock((lock_));
   if (refs_.release(font)) {
+    const size_t num_pages = font->font_page_count();
+    for (size_t page_index = 0; page_index < num_pages; ++page_index) {
+      rmaterial_t *material = font->font_page(page_index);
+      if (!material) {
+        continue;
+      }
+      font->set_font_page(page_index, nullptr);
+      release_material(material);
+    }
     destroy_resource(font);
   }
 }
