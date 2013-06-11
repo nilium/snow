@@ -176,16 +176,13 @@ void client_t::frameloop()
   console_pane_t &console = default_console();
   s_set_log_callback(cl_log_callback, &console);
 
-  player_t psystem_t;
   cvars_.clear();
-
   cvars_.register_ccmd(&cmd_quit_);
+
   cl_willQuit = cvars_.get_cvar( "cl_willQuit", 0, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
   wnd_focused = cvars_.get_cvar( "wnd_focused", 1, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
   wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", true, CVAR_DELAYED | CVAR_INVISIBLE);
   r_drawFrame = cvars_.get_cvar( "r_drawFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
-
-  add_system(&psystem_t);
 
   console.set_cvar_set(&cvars_);
 
@@ -225,12 +222,6 @@ void client_t::frameloop()
   glClearColor(0.5, 0.5, 0.5, 1.0);
   glEnable(GL_BLEND);
 
-  game_object_t *player = new game_object_t();
-  player->add_component<player_mover_t>();
-
-  for (auto &syspair : systems_) {
-    s_log_note("%d %x", syspair.first, syspair.second);
-  }
 
   while (running_.load()) {
 #if HIDE_CURSOR_ON_CONSOLE_CLOSE
@@ -305,8 +296,6 @@ void client_t::frameloop()
   s_set_log_callback(nullptr, nullptr);
 
   res_->release_all();
-
-  delete player;
 
   glfwMakeContextCurrent(NULL);
 } // frameloop
