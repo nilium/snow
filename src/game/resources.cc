@@ -11,6 +11,7 @@
 #include <map>
 
 
+#define FONTPAGE_MATERIAL_FORMAT ("fonts/%s_%d")
 #define MAX_PATH_LEN (512)
 #define RES_POOL_SIZE (128 * 1024 * 1024) /* 128mb */
 #define throw_unless_kind(V_, KIND_, NAME_)                                    \
@@ -117,6 +118,23 @@ rfont_t *resources_t::load_font(const string &name)
           font = nullptr;
         }
       }
+    }
+
+    int fontpage_index = 0;
+    char temp_namebuffer[MAX_PATH_LEN];
+    for (; fontpage_index < font->font_page_count(); ++fontpage_index) {
+      sqlite3_snprintf(MAX_PATH_LEN, temp_namebuffer, FONTPAGE_MATERIAL_FORMAT,
+        name.c_str(), fontpage_index);
+
+      string_t window(temp_namebuffer, std::strlen(temp_namebuffer), true);
+      rmaterial_t *material = load_material(window);
+      if (!material) {
+        material = load_material(NULL_MATERIAL_NAME);
+      }
+      assert(material);
+
+      font->set_font_page(fontpage_index, material);
+      assert(font->font_page(fontpage_index));
     }
 
     if (font) {

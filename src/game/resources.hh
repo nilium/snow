@@ -14,6 +14,9 @@
 namespace snow {
 
 
+#define NULL_MATERIAL_NAME ("notex")
+
+
 struct rfont_t;
 struct rtexture_t;
 struct rmaterial_t;
