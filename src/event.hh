@@ -180,8 +180,8 @@ std::ostream &operator << (std::ostream &out, const event_t &in)
 }
 
 
-GLFWwindow *main_window();
-void set_main_window(GLFWwindow *window);
+S_EXPORT GLFWwindow *main_window();
+S_EXPORT void set_main_window(GLFWwindow *window);
 
 
 } // namespace snow
