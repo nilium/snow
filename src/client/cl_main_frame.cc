@@ -188,7 +188,8 @@ void client_t::frameloop()
   unsigned frame, last_frame;
   frame = 1; last_frame = 0;
 
-  glClearColor(0.5, 0.5, 0.5, 1.0);
+  // FIXME: move these somewhere else, probably?
+  glClearColor(0, 0, 0, 1);
   glEnable(GL_BLEND);
 
   add_system(&console, 16777216, -16777216);
