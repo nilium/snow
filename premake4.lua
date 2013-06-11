@@ -177,7 +177,7 @@ kind "StaticLib"
 targetdir "lib"
 language "C"
 files { "src/ext/sqlite3.c", "src/ext/stb_image.c" }
-buildoptions { "-arch i386", "-arch x86_64" }
+buildoptions { "-arch x86_64" }
 
 project "snow"
 
