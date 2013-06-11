@@ -75,14 +75,20 @@ resources_t::~resources_t()
 
 void resources_t::prepare_resources()
 {
-  lock_.lock();
+  // FIXME: Add reload_resources to check cached objects for changes and apply
+  // changes as needed. (Should this reload all shaders?)
+  std::lock_guard<decltype(lock_)> guard(lock_);
+
   release_all();
+
+  /* Clear out cached data */
   filepaths_.clear();
   font_dbs_.clear();
   res_files_.clear();
+
+  /* Reload everything */
   prepare_fonts();
   prepare_definitions();
-  lock_.unlock();
 }
 
 
