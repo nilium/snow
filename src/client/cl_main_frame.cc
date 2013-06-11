@@ -174,10 +174,8 @@ void client_t::frameloop()
 
   console.set_cvar_set(&cvars_);
 
-  auto window = window_;
-  glfwShowWindow(window);
-
-  glfwMakeContextCurrent(window);
+  glfwShowWindow(window_);
+  glfwMakeContextCurrent(window_);
   glfwSwapInterval(0);    // Don't needlessly limit rendering speed
 
   // Set this to true before getting the base time since it might loop a couple
@@ -221,12 +219,12 @@ void client_t::frameloop()
 #if HIDE_CURSOR_ON_CONSOLE_CLOSE
     switch (mousemode) {
     case 0:
-      glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN);
-      glfwSetInputMode(window, GLFW_STICKY_KEYS, 1);
+      glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN);
+      glfwSetInputMode(window_, GLFW_STICKY_KEYS, 1);
       break;
     case 1:
-      glfwSetInputMode(window, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
-      glfwSetInputMode(window, GLFW_STICKY_KEYS, 0);
+      glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
+      glfwSetInputMode(window_, GLFW_STICKY_KEYS, 0);
       break;
     default: break;
     }
@@ -246,7 +244,7 @@ void client_t::frameloop()
         }
       }
 
-      glfwSwapBuffers(window);
+      glfwSwapBuffers(window_);
     }
 
     if (cl_willQuit->geti()) {
