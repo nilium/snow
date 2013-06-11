@@ -53,114 +53,30 @@ const string &event_kind_string(event_kind_t kind)
 *******************************************************************************/
 
 
-bool event_queue_t::peek_event(event_t &out) const
+
+bool event_queue_t::emit_event(const event_t &event)
 {
-  bool set = false;
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
-  if (!events_.empty()) {
-    out = events_.front();
-    set = true;
+  /* If no peer to receive it, drop the event */
+  if (write_socket_) {
+    int result = write_socket_->send(&event, sizeof(event), ZMQ_DONTWAIT);
+    assert(result == sizeof(event) || (result == -1 && errno == EAGAIN));
+    return result == sizeof(event);
   }
-  return set;
-}
-
-
-
-bool event_queue_t::poll_event(event_t &out)
-{
-  bool set = false;
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
-  if (!events_.empty()) {
-    out = events_.front();
-    events_.pop_front();
-    set = true;
-  }
-  return set;
-}
-
-
-
-bool event_queue_t::poll_event_before(event_t &out, double time)
-{
-  bool set = false;
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
-  if (!events_.empty()) {
-    event_list_t::const_iterator iter;
-    event_list_t::const_iterator end = events_.cend();
-    if (last_time_ != time) {
-      iter = events_.cbegin();
-      last_time_ = time;
-    } else {
-      if (last_event_ == end) {
-        return set;
-      }
-      iter = last_event_;
-    }
-    for (; iter != end; ++iter) {
-      if (iter->time <= time) {
-        set = true;
-        out = *iter;
-        iter = events_.erase(iter);
-        break;
-      }
-    }
-    last_event_ = iter;
-  }
-  return set;
-}
-
-
-
-void event_queue_t::emit_event(const event_t &event)
-{
-  const event_t copy = event;
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
-  events_.push_back(copy);
-  if (last_event_ == events_.cend()) {
-    last_event_ = events_.cend();
-    --last_event_;
-  }
+  return false;
 }
 
 
 
 void event_queue_t::set_frame_time(double time)
 {
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
   frame_time_ = time;
 }
 
 
 
-void event_queue_t::clear()
+void event_queue_t::set_socket(zmq::socket_t *socket)
 {
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
-  events_.clear();
-  last_event_ = events_.cend();
-}
-
-
-
-auto event_queue_t::event_queue() const -> event_list_t
-{
-#if USE_LOCKED_EVENT_QUEUE
-  std::lock_guard<std::mutex> guard(lock_);
-#endif
-  event_list_t copy;
-  copy = events_;
-  return copy;
+  write_socket_ = socket;
 }
 
 

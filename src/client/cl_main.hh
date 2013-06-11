@@ -14,6 +14,7 @@
 #endif
 #include <atomic>
 #include <list>
+#include "../ext/zmqxx.hh"
 
 
 struct GLFWwindow;
@@ -78,6 +79,7 @@ private:
   using system_pair_t = std::pair<int, system_t *>;
 
   std::atomic<bool>         running_ { false };
+  std::atomic<bool>         poll_events_ { true };
   double                    sim_time_ = 0;
   double                    base_time_ = 0;
 
@@ -94,6 +96,9 @@ private:
   cvar_set_t                cvars_;
 
   resources_t *             res_;
+
+  zmq::socket_t             read_socket_;
+  zmq::socket_t             write_socket_;
 
   // CCMDS
   ccmd_t cmd_quit_;

@@ -3,8 +3,8 @@
 
 #include "config.hh"
 #include "event.hh"
+#include "ext/zmqxx.hh"
 
-#include <list>
 #include <memory>
 #include <mutex>
 
@@ -12,24 +12,25 @@
 namespace snow {
 
 
-#define USE_LOCKED_EVENT_QUEUE 1
+#define EVENT_ENDPOINT ("inproc://events")
 
 
+// Note: Not thread safe. Interact with the event queue object only from a
+// single thread. To read events, connect to the event endpoint and receive
+// events.
+// Creating multiple event queues is fine, provided they each use a different
+// socket. Using a PUSH-PULL socket, you can reasonably easily create a many-to-
+// -one combined event queue using multiple event queues to emit events.
 struct S_EXPORT event_queue_t
 {
-  using event_list_t = std::list<event_t>;
-
-  bool          peek_event(event_t &out) const;
-  bool          poll_event(event_t &out);
-  bool          poll_event_before(event_t &out, double time);
-  void          emit_event(const event_t &event);
+  bool          emit_event(const event_t &event);
   void          set_frame_time(double time);
-  void          clear();
-
-  // Get a copy of the event queue
-  event_list_t  event_queue() const;
 
   void          set_window_callbacks(GLFWwindow *window, int events_mask = ALL_EVENT_KINDS);
+
+  // Sets the write socket. If the socket is set to NULL, events will be dropped
+  // from the queue. The socket must already be bound to a given endpoint.
+  void          set_socket(zmq::socket_t *socket);
 
 private:
 
@@ -45,13 +46,9 @@ private:
   static void   ecb_window_focus_event(GLFWwindow *window, int focused);
   static void   ecb_window_iconify_event(GLFWwindow *window, int iconified);
 
-#if USE_LOCKED_EVENT_QUEUE
-  mutable std::mutex lock_;
-#endif
-  event_list_t      events_;
+  zmq::socket_t *   write_socket_ = nullptr;
   double            last_time_ = 0;
   double            frame_time_ = 0;
-  event_list_t::const_iterator last_event_;
 };
 
 

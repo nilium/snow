@@ -17,6 +17,8 @@
 #include "../ext/stb_image.h"
 #include "../data/database.hh"
 
+#include "../ext/fltk.h"
+
 
 namespace snow {
 
@@ -94,7 +96,8 @@ client_t &client_t::get_client(int client_num)
 
 
 client_t::client_t() :
-  running_(false),
+  read_socket_(zmq::context_t::shared(), ZMQ_PULL),
+  write_socket_(zmq::context_t::shared(), ZMQ_PUSH),
   cmd_quit_("quit", [=](cvar_set_t &cvars, const ccmd_t::args_t &args) {
     if (cl_willQuit) {
       cl_willQuit->seti(1);
@@ -127,17 +130,15 @@ void client_t::initialize(int argc, const char *argv[])
   }
   set_main_window(window_);
 
-  vec2_t<int> window_size;
-  glfwGetWindowSize(window_, &window_size.x, &window_size.y);
-  event_queue_.emit_event({
-    .sender_id = EVENT_SENDER_WINDOW,
-    .window = window_,
-    .kind = WINDOW_SIZE_EVENT,
-    .time = 0,
-    .window_size = window_size
-  });
+  // Set up event handling
+  read_socket_.set_linger(10);
+  read_socket_.bind(EVENT_ENDPOINT);
+
+  write_socket_.set_linger(10);
+  write_socket_.connect(EVENT_ENDPOINT);
+
+  event_queue_.set_socket(&write_socket_);
   event_queue_.set_window_callbacks(window_, ALL_EVENT_KINDS);
-  // glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
 
   s_log_note("------------------- INIT FINISHED --------------------");
 
@@ -166,8 +167,22 @@ void client_t::initialize(int argc, const char *argv[])
 
   // Launch frameloop thread
   s_log_note("Launching frameloop");
-  // async_thread(&client_t::run_frameloop, this);
-  run_frameloop();
+  async_thread(&client_t::run_frameloop, this);
+
+  for (poll_events_ = true; poll_events_;) {
+    #define USE_FLTK_EVENT_POLLING 1
+    #if USE_FLTK_EVENT_POLLING
+      while (Fl::wait(0.5) > 0)
+        ;
+    #else
+      glfwPollEvents();
+    #endif
+  }
+
+  event_queue_.set_socket(nullptr);
+  write_socket_.close();
+  read_socket_.close();
+
 }
 
 
@@ -252,7 +267,7 @@ void client_t::terminate()
 {
   dispose();
   client_cleanup();
-  sys_quit();
+  poll_events_ = false;
 }
 
 

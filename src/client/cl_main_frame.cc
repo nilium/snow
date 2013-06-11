@@ -17,7 +17,6 @@
 #include "../timing.hh"
 #include <thread>
 #include <physfs.h>
-#include "../ext/fltk.h"
 
 
 namespace snow {
@@ -38,40 +37,9 @@ static void cl_log_callback(const char *msg, size_t len, void *ctx)
 
 
 
-enum : int {
-  EVENT_SENDER_UNKNOWN,
-  EVENT_SENDER_NET,
-};
-
-
-
-std::chrono::milliseconds cl_frameloop_sleep_duration();
-void cl_poll_events(void *ctx);
-
-
-
 std::chrono::milliseconds cl_frameloop_sleep_duration()
 {
   return std::chrono::milliseconds(16);
-}
-
-
-
-/*==============================================================================
-  cl_poll_events
-
-    Function to call glfwPollEvents on the main thread.
-==============================================================================*/
-void cl_poll_events(void *ctx)
-{
-  (void)ctx;
-#define USE_FLTK_EVENT_POLLING 1
-#if USE_FLTK_EVENT_POLLING
-  while (Fl::wait(0) > 0)
-    ;
-#else
-  glfwPollEvents();
-#endif
 }
 
 
@@ -132,34 +100,13 @@ void client_t::pump_netevents(double timeslice)
 ==============================================================================*/
 void client_t::read_events(double timeslice)
 {
-#ifndef NDEBUG
-  #define LONG_INPUT_TIME (0.004) /* 4 milliseconds */
-  double input_time = glfwGetTime();
-#endif
-
   event_queue_.set_frame_time(sim_time_);
-
-#if USE_SERVER
-  // Read network events
-  if (is_connected()) {
-    pump_netevents(timeslice);
-  }
-#endif
-
-  cl_poll_events(nullptr);
-
-#ifndef NDEBUG
-  input_time = glfwGetTime() - input_time;
-  if (input_time > LONG_INPUT_TIME) {
-    s_log_warning("Input queue is taking a long time: %f", input_time);
-  }
-#endif
 
   // And run through events
   event_t event;
   auto sys_end = systems_.cend();
   auto sys_begin = systems_.cbegin();
-  while (event_queue_.poll_event(event)) {
+  while (read_socket_.recv(&event, sizeof(event), ZMQ_DONTWAIT) == sizeof(event)) {
     switch (event.kind) {
       case WINDOW_FOCUS_EVENT:
         wnd_focused->seti(event.focused);
