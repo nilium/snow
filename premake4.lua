@@ -269,8 +269,8 @@ links { "Cocoa.framework" }
 links { "OpenGL.framework" }
 links { "IOKit.framework" }
 
-buildoptions { "-arch i386" }
-linkoptions { "-ObjC++", "-headerpad_max_install_names", "-arch i386" }
+buildoptions { "-arch x86_64" }
+linkoptions { "-ObjC++", "-headerpad_max_install_names", "-arch x86_64" }
 
 configuration {}
 buildoptions { "-std=c++11" }
