@@ -143,8 +143,8 @@ template <typename T, typename... ARGS>
 T *resources_t::allocate_resource(uint64_t hash, ARGS&& ...args)
 {
   using res_type_t = res_store_t<T>;
-  res_type_t *store = new res_type_t;
-  // res_type_t *store = (res_type_t *)pool_malloc(&pool_, sizeof(*store), 1);
+  // res_type_t *store = new res_type_t;
+  res_type_t *store = (res_type_t *)pool_malloc(&pool_, sizeof(*store), 1);
   if (!store) {
     s_log_error("Unable to allocate memory for resource");
     return nullptr;
@@ -165,8 +165,8 @@ void resources_t::destroy_resource(T *res)
   uint64_t *hash_ptr = ((uint64_t *)res) - 1;
   resources_.erase(hash_ptr[0]);
   res->~T();
-  // pool_free((res_type_t *)hash_ptr);
-  delete (res_type_t *)hash_ptr;
+  pool_free((res_type_t *)hash_ptr);
+  // delete (res_type_t *)hash_ptr;
 }
 
 
