@@ -293,53 +293,40 @@ void client_t::dispose()
 
 
 
-void client_t::add_system(system_t *system, int priority)
+void client_t::add_system(system_t *system, int logic_priority, int draw_priority)
 {
-  auto iter = systems_.cbegin();
-  auto end = systems_.cend();
-  while (iter != end && iter->first > priority) {
-    ++iter;
-  }
-  systems_.emplace(iter, priority, system);
-}
+  auto predicate = [](int priority, const system_pair_t &pair) {
+    return pair.first >= priority;
+  };
 
+  auto logic_iter = std::upper_bound(
+    logic_systems_.cbegin(), logic_systems_.cend(),
+    logic_priority, predicate);
+  logic_systems_.emplace(logic_iter, logic_priority, system);
 
-
-void client_t::remove_system(system_t *system, int priority)
-{
-  auto iter = systems_.cbegin();
-  auto end = systems_.cend();
-  while (iter != end) {
-    if (iter->first == priority && iter->second == system) {
-      iter = systems_.erase(iter);
-    } else if (priority > iter->first) {
-      break;
-    } else {
-      ++iter;
-    }
-  }
+  auto draw_iter = std::upper_bound(
+    draw_systems_.cbegin(), draw_systems_.cend(),
+    draw_priority, predicate);
+  draw_systems_.emplace(draw_iter, draw_priority, system);
 }
 
 
 
 void client_t::remove_system(system_t *system)
 {
-  auto iter = systems_.cbegin();
-  auto end = systems_.cend();
-  while (iter != end) {
-    if (iter->second == system) {
-      iter = systems_.erase(iter);
-    } else {
-      ++iter;
-    }
-  }
+  auto predicate = [system](const system_pair_t &pair) {
+    return pair.second == system;
+  };
+  logic_systems_.remove_if(predicate);
+  draw_systems_.remove_if(predicate);
 }
 
 
 
 void client_t::remove_all_systems()
 {
-  systems_.clear();
+  logic_systems_.clear();
+  draw_systems_.clear();
 }
 
 

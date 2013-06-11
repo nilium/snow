@@ -91,8 +91,8 @@ void client_t::read_events(double timeslice)
 
   // And run through events
   event_t event;
-  auto sys_end = systems_.cend();
-  auto sys_begin = systems_.cbegin();
+  auto sys_end = logic_systems_.cend();
+  auto sys_begin = logic_systems_.cbegin();
   while (read_socket_.recv(&event, sizeof(event), ZMQ_DONTWAIT) == sizeof(event)) {
     switch (event.kind) {
       case WINDOW_FOCUS_EVENT:
@@ -126,7 +126,7 @@ void client_t::read_events(double timeslice)
 ==============================================================================*/
 void client_t::do_frame(double step, double timeslice)
 {
-  for (const auto &spair : systems_) {
+  for (const auto &spair : logic_systems_) {
     if (spair.second->active()) {
       spair.second->frame(step, timeslice);
     }
@@ -189,11 +189,10 @@ void client_t::frameloop()
   unsigned frame, last_frame;
   frame = 1; last_frame = 0;
 
-  add_system(&console, 65536);
-
   glClearColor(0.5, 0.5, 0.5, 1.0);
   glEnable(GL_BLEND);
 
+  add_system(&console, 16777216, -16777216);
 
   while (running_.load()) {
 #if HIDE_CURSOR_ON_CONSOLE_CLOSE
@@ -237,7 +236,7 @@ void client_t::frameloop()
       glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
       assert_gl("Clearing buffers");
 
-      for (auto &spair : systems_) {
+      for (auto &spair : draw_systems_) {
         if (spair.second->active()) {
           spair.second->draw(sim_time_);
         }

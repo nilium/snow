@@ -56,9 +56,7 @@ struct S_EXPORT client_t
 
   /* Adds a system to the list of systems to update/send events to. Does not
   check to see if the system is already in the list. */
-  void add_system(system_t *system, int priority = 0);
-  /* Removes a system if and only if its priority matches */
-  void remove_system(system_t *system, int priority);
+  void add_system(system_t *system, int logic_priority = 0, int draw_priority = 0);
   /* Removes a system regardless of what its priority is */
   void remove_system(system_t *system);
   void remove_all_systems();
@@ -92,7 +90,8 @@ private:
   GLFWwindow *              window_ = NULL;
   event_queue_t             event_queue_;
   gl_state_t                state_;
-  std::list<system_pair_t>  systems_ { };
+  std::list<system_pair_t>  logic_systems_ { };
+  std::list<system_pair_t>  draw_systems_  { };
   cvar_set_t                cvars_;
 
   resources_t *             res_;
