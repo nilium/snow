@@ -222,6 +222,7 @@ flags { "FloatStrict", "NoRTTI" }
 objdir "obj"
 
 -- Libraries
+links { "zmq" }
 links { "physfs", "snow_c_libs" }
 linkoptions { '`fltk-config --ldflags`' }
 buildoptions { '`fltk-config --cxxflags`' }
