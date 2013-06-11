@@ -231,7 +231,6 @@ buildoptions { '`fltk-config --cxxflags`' }
 includedirs { "include" }
 local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"))
 files(cxx_files)
-excludes { "src/script/*" }
 
 configuration "no-server"
 excludes { "src/server/*.cc" }
