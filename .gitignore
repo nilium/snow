@@ -13,3 +13,5 @@ src/build-config.hh
 *.make
 Makefile
 obj
+changelog/public
+changelog/sync
