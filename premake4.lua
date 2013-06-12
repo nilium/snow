@@ -186,7 +186,7 @@ configuration {}
 targetdir "bin"
 kind "WindowedApp"
 
--- links { "lua" }
+links { "angelscript" }
 
 -- Option defaults
 g_exclude_suffixes = {}
