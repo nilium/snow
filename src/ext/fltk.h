@@ -1,3 +1,6 @@
+// fltk.h -- Noel Cower -- Public Domain
+// Convenience header to include all FLTK headers.
+
 #ifndef __SNOW__FLTK_H__
 #define __SNOW__FLTK_H__
 
