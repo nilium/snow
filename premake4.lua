@@ -1,6 +1,6 @@
 --[[----------------------------------------------------------------------------
-  premake4.lua -- Noel Cower -- Public Domain
-  This file is a part of libsnow-common
+  premake4.lua -- Noel Cower
+  This file is a part of the snow engine.
 ------------------------------------------------------------------------------]]
 
 
