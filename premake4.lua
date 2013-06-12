@@ -172,34 +172,15 @@ end -- mkdir_p
 solution "snow"
 configurations { "debug", "release" }
 
-project "snow_c_libs"
-kind "StaticLib"
-targetdir "lib"
-language "C"
-files { "src/ext/sqlite3.c", "src/ext/stb_image.c" }
-buildoptions { "-arch x86_64" }
-
-project "snow"
-
-configuration {}
-
-targetdir "bin"
-kind "WindowedApp"
-
-links { "angelscript" }
-
--- Option defaults
-g_exclude_suffixes = {}
-
 -- Build options
 newoption {
-  trigger = "no-exceptions",
-  description = "Disables exceptions in snow-common -- replaces throws with exit(1)"
+  trigger = "with-exceptions",
+  description = "Enables exceptions -- if disabled, throws are replaced with std::abort()"
 }
 
 newoption {
-  trigger = "no-server",
-  description = "Disables the server code in the engine build."
+  trigger = "with-server",
+  description = "Enables the server code in the engine build."
 }
 
 if os.is("macosx") then
@@ -209,68 +190,118 @@ if os.is("macosx") then
   }
 end
 
+
+--[[ snow_c_libs project ------------------------------------------]] do
+project       "snow_c_libs"
+kind          "StaticLib"
+targetdir     "lib"
+
+language      "C"
+files         { "src/ext/sqlite3.c", "src/ext/stb_image.c" }
+buildoptions  { "-arch x86_64" }
+
+end
+
+
+--[[ snowhash project ---------------------------------------------]] do
+project       "snowhash"
+language      "C++"
+kind          "ConsoleApp"
+files         { "snowhash.cc" }
+
+-- Link snow-common
+linkoptions   { '`pkg-config --libs snow-common`' }
+buildoptions  { '`pkg-config --cflags snow-common`' }
+
+buildoptions  { "-std=c++11" }
+
+configuration { "macosx" }
+buildoptions  { "-stdlib=libc++" }
+links         { "c++" }
+
+configuration { "not with-exceptions" }
+flags         { "NoExceptions" }
+
+end
+
+
+--[[ snow project -------------------------------------------------]] do
+project       "snow"
+targetdir     "bin"
+kind          "WindowedApp"
+
+links         { "angelscript" }
+
+
+-- Option defaults
+local g_exclude_suffixes = {}
+
+
 -- Compiler flags
-g_version = "0.0.1"
-language "C++"
-flags { "FloatStrict", "NoRTTI" }
-objdir "obj"
+local g_version = "0.0.1"
+language      "C++"
+flags         { "FloatStrict", "NoRTTI" }
+objdir        "obj"
+
 
 -- Libraries
-links { "zmq" }
-links { "physfs", "snow_c_libs" }
-linkoptions { '`fltk-config --ldflags`' }
-buildoptions { '`fltk-config --cxxflags`' }
+links         { "zmq" }
+links         { "physfs", "snow_c_libs" }
+linkoptions   { '`fltk-config --ldflags`' }
+buildoptions  { '`fltk-config --cxxflags`' }
+
 
 -- Add sources/include directories
-includedirs { "include" }
+includedirs   { "include" }
 local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"))
 files(cxx_files)
 
-configuration "no-server"
-excludes { "src/server/*.cc" }
+configuration "not with-server"
+excludes      { "src/server/*" }
 
 configuration "release"
-defines { "NDEBUG" }
+defines       { "NDEBUG" }
 
 configuration { "macosx", "release" }
-buildoptions { "-O3" }
+buildoptions  { "-O3" }
 
 configuration "debug"
-defines { "DEBUG" }
-flags { "Symbols" }
+defines       { "DEBUG" }
+flags         { "Symbols" }
 
-g_build_config_opts = {
-  USE_EXCEPTIONS = true,
-  USE_SERVER = true
+
+local g_build_config_opts = {
+  USE_EXCEPTIONS = false,
+  USE_SERVER = false
 }
 
-if _OPTIONS["no-exceptions"] ~= nil then
-  g_build_config_opts.USE_EXCEPTIONS = not _OPTIONS["no-exceptions"]
+if _OPTIONS["with-exceptions"] ~= nil then
+  g_build_config_opts.USE_EXCEPTIONS = not not _OPTIONS["with-exceptions"]
 end
 
-if _OPTIONS["no-server"] ~= nil then
-  g_build_config_opts.USE_SERVER = not _OPTIONS["no-server"]
+if _OPTIONS["with-server"] ~= nil then
+  g_build_config_opts.USE_SERVER = not not _OPTIONS["with-server"]
 end
 
 -- Exceptions
-configuration "no-exceptions"
-flags { "NoExceptions" }
+configuration "not with-exceptions"
+flags         { "NoExceptions" }
 
 -- OS X specific options
 configuration "macosx"
-links { "Cocoa.framework" }
-links { "OpenGL.framework" }
-links { "IOKit.framework" }
+links         { "Cocoa.framework" }
+links         { "OpenGL.framework" }
+links         { "IOKit.framework" }
 
-buildoptions { "-arch x86_64" }
-linkoptions { "-ObjC++", "-headerpad_max_install_names", "-arch x86_64" }
+buildoptions  { "-arch x86_64" }
+linkoptions   { "-ObjC++", "-headerpad_max_install_names", "-arch x86_64" }
 
 configuration {}
-buildoptions { "-std=c++11" }
+buildoptions  { "-std=c++11" }
 
 configuration { "macosx" }
-buildoptions { "-stdlib=libc++" }
-links { "c++" }
+buildoptions  { "-stdlib=libc++" }
+links         { "c++" }
 
 local target_path_osx = "bin/snow.app/Contents/MacOS/snow"
 local change_libs_osx = {
@@ -301,12 +332,15 @@ end
 configuration {}
 g_dynamic_libs = { }
 g_static_libs = { "snow-common", "libenet", "glfw3" }
+
 if #g_static_libs > 0 then
   linkoptions { "`pkg-config --libs " .. table.concat(g_static_libs, " ") .. "`"}
 end
+
 if #g_dynamic_libs > 0 then
   linkoptions { "`pkg-config --libs " .. table.concat(g_dynamic_libs, " ") .. "`"}
 end
+
 if (#g_dynamic_libs + #g_static_libs) > 0 then
   local combined_libs = table.concat(snow.join_arrays(g_dynamic_libs, g_static_libs), " ")
   buildoptions { "`pkg-config --cflags " .. combined_libs .. "`"}
@@ -320,4 +354,6 @@ if _ACTION and _ACTION ~= "install" then
 
   print("Generating 'src/build-config.hh'...")
   os.execute("./format.rb " .. config_src .. " " .. config_dst .. snow.formatrb_string(g_build_config_opts))
+end
+
 end
