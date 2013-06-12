@@ -10,9 +10,6 @@
 #include <GL/gl.h>
 #endif
 
-#include "sgl_extensions.hh"
-#include "sgl_enums.hh"
-
 #define GLFW_INCLUDE_GLCOREARB
 #include <glfw/glfw3.h>
 
