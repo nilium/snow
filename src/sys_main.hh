@@ -25,7 +25,7 @@ S_EXPORT void sys_init(int argc, const char **argv);
 S_EXPORT void sys_quit();
 /*==============================================================================
   sys_set_physfs_config
- 
+
     Initializes PhysFS. Is called by sys_init. If not using sys_init, this
     should be called on its own to mount the game directory and any snowballs.
 *==============================================================================*/
