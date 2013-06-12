@@ -37,7 +37,6 @@ private:
   rdraw_2d_t drawer_;
   rbuffer_t vbuffer_;
   rbuffer_t ibuffer_;
-  bool init_vao_ = false;
   rvertex_array_t vao_;
 };
 

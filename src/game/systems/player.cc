@@ -107,12 +107,12 @@ void player_t::draw(double timeslice)
   drawer_.set_handle({0.5, 0.5});
   drawer_.set_origin(pos);
   drawer_.draw_rect(vec2f_t::zero, {32, 32}, {1.0, 1.0, 1.0, 1.0}, player_mat_);
+
   drawer_.buffer_vertices(vbuffer_, 0);
   drawer_.buffer_indices(ibuffer_, 0);
 
-  if (!init_vao_) {
+  if (!vao_.generated()) {
     vao_ = drawer_.build_vertex_array(ATTRIB_POSITION, ATTRIB_TEXCOORD0, ATTRIB_COLOR, vbuffer_, 0, ibuffer_);
-    init_vao_ = true;
   }
 
   drawer_.draw_with_vertex_array(vao_, 0);
