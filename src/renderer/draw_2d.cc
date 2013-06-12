@@ -146,7 +146,7 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, GLintptr ib_where)
     }
   }
 
-  glBindVertexArray(0);
+  rvertex_array_t::unbind();
   assert_gl("Unbinding vertex array object");
 }
 
@@ -203,8 +203,8 @@ void rdraw_2d_t::buffer_indices(rbuffer_t &buffer, GLintptr ib_where)
 
 
 
-rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
-  const GLuint tex_attrib, const GLuint col_attrib, rbuffer_t &vertices,
+rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint position_attrib,
+  const GLuint texcoord_attrib, const GLuint color_attrib, rbuffer_t &vertices,
   const GLintptr vb_where, rbuffer_t &indices)
 {
   rvertex_array_t vao;
@@ -216,28 +216,21 @@ rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint pos_attrib,
   vertices.bind_as(GL_ARRAY_BUFFER);
 
   // Enable attribute arrays
-  glEnableVertexAttribArray(pos_attrib);
-  assert_gl("Enabling position attribute");
-  glEnableVertexAttribArray(col_attrib);
-  assert_gl("Enabling color attribute");
-  glEnableVertexAttribArray(tex_attrib);
-  assert_gl("Enabling texcoord attribute");
+  vao.enable_attrib(position_attrib);
+  vao.enable_attrib(color_attrib);
+  vao.enable_attrib(texcoord_attrib);
+
+  const GLintptr position_offset = vb_where + offsetof(vertex_t, position);
+  const GLintptr texcoord_offset = vb_where + offsetof(vertex_t, texcoord);
+  const GLintptr color_offset    = vb_where + offsetof(vertex_t, color);
 
   // Bind vertex attributes to buffer offsets
-  glVertexAttribPointer(pos_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
-    (const GLvoid *)(vb_where + offsetof(vertex_t, position)));
-  assert_gl("Setting vertex position attrib");
-  glVertexAttribPointer(tex_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
-    (const GLvoid *)(vb_where + offsetof(vertex_t, texcoord)));
-  assert_gl("Setting vertex texture coords attrib");
-  glVertexAttribPointer(col_attrib, 4, GL_FLOAT, GL_FALSE, sizeof(vertex_t),
-    (const GLvoid *)(vb_where + offsetof(vertex_t, color)));
-  assert_gl("Setting vertex color attrib");
+  vao.bind_attrib(position_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), position_offset);
+  vao.bind_attrib(texcoord_attrib, 2, GL_FLOAT, GL_FALSE, sizeof(vertex_t), texcoord_offset);
+  vao.bind_attrib(color_attrib,    4, GL_FLOAT, GL_FALSE, sizeof(vertex_t), color_offset);
 
-  indices.bind_as(GL_ELEMENT_ARRAY_BUFFER);
+  rvertex_array_t::unbind();
 
-  glBindVertexArray(0);
-  assert_gl("Unbinding vertex array object");
   glBindBuffer(GL_ARRAY_BUFFER, 0);
   assert_gl("Unbinding array buffer");
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);

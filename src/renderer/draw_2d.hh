@@ -56,8 +56,8 @@ struct rdraw_2d_t
     buffer will be resized to at least fit it exactly. The returned VAO will
     already be bound.
   */
-  rvertex_array_t build_vertex_array(const GLuint pos_attrib,
-    const GLuint tex_attrib, const GLuint col_attrib,
+  rvertex_array_t build_vertex_array(const GLuint position_attrib,
+    const GLuint texcoord_attrib, const GLuint color_attrib,
     rbuffer_t &vertices, const GLintptr vb_where,
     rbuffer_t &indices);
 
