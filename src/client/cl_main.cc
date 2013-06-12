@@ -296,7 +296,7 @@ void client_t::dispose()
 void client_t::add_system(system_t *system, int logic_priority, int draw_priority)
 {
   auto predicate = [](int priority, const system_pair_t &pair) {
-    return pair.first >= priority;
+    return pair.first <= priority;
   };
 
   auto logic_iter = std::upper_bound(
