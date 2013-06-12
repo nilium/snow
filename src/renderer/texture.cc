@@ -384,12 +384,6 @@ bool load_texture_2d(const string &path, rtexture_t &tex,
     default: break;
   }
 
-  if (!gl_state_t::can_create_texture(0, internal_format, width, height)) {
-    stbi_image_free(data);
-    s_log_error("GL cannot create a texture for this image");
-    return false;
-  }
-
   tex.set_target(GL_TEXTURE_2D);
   tex.bind();
 

@@ -9,7 +9,6 @@
 namespace snow {
 
 
-struct gl_state_t;
 struct rshader_t;
 
 

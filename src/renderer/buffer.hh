@@ -7,16 +7,12 @@
 namespace snow {
 
 
-struct gl_state_t;
-
 
 /*******************************************************************************
 *                     general-purpose GL buffer structure                      *
 *******************************************************************************/
 struct S_EXPORT rbuffer_t
 {
-  friend struct gl_state_t;
-
   /*****************************************************************************
   * After calling 'bind', you are expected to use glBufferSubData to load
   * what you need into the buffer. If not already created, the buffer will be
