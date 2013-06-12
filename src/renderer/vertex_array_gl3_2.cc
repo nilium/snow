@@ -1,5 +1,17 @@
 #include "vertex_array.hh"
 #include "gl_error.hh"
+#include "buffer.hh"
+
+// If Snow can use GL's own vertex array object implementation, do so, otherwise
+// don't compile this implementation.
+#if GL_VERSION_3_0 || GL_ES_VERSION_3_0 || GL_OES_vertex_array_object
+
+#if !GL_VERSION_3_0 && !GL_ES_VERSION_3_0 && GL_OES_vertex_array_object
+// Make use of OES_vertex_array_object if neither GLES 3 nor GL 3.2 are provided
+#define glGenVertexArrays glGenVertexArraysOES
+#define glBindVertexArray glBindVertexArrayOES
+#define glDeleteVertexArrays glDeleteVertexArraysOES
+#endif
 
 namespace snow {
 
@@ -79,6 +91,14 @@ void rvertex_array_t::bind()
 
 
 
+void rvertex_array_t::unbind()
+{
+  glBindVertexArray(0);
+  assert_gl("Unbinding vertex array object");
+}
+
+
+
 /*==============================================================================
   unload
 
@@ -94,4 +114,31 @@ void rvertex_array_t::unload()
 }
 
 
+
+void rvertex_array_t::enable_attrib(GLuint index)
+{
+  glEnableVertexAttribArray(index);
+  assert_gl("Enabling vertex attrib array");
+}
+
+
+
+void rvertex_array_t::disable_attrib(GLuint index)
+{
+  glDisableVertexAttribArray(index);
+  assert_gl("Disabling vertex attrib array");
+}
+
+
+
+void rvertex_array_t::bind_attrib(GLuint index, GLint size, GLenum type,
+  GLboolean normalized, GLsizei stride, GLintptr offset)
+{
+  glVertexAttribPointer(index, size, type, normalized, stride, (const GLvoid *)offset);
+  assert_gl("Setting vertex attrib pointer");
+}
+
+
 } // namespace snow
+
+#endif // GL_VERSION_3_0 || GL_ES_VERSION_3_0 || GL_OES_vertex_array_object
