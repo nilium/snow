@@ -1,4 +1,7 @@
-/* zmqxx.hh -- Noel Cower -- Public Domain */
+/*
+  zmqxx.hh -- Noel Cower -- Public Domain
+  Quick C++11 wrapper around some of ZeroMQ's API.
+*/
 
 #ifndef __ZMQXX_HH__
 #define __ZMQXX_HH__
