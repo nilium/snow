@@ -6,7 +6,6 @@
 #include "../dispatch.hh"
 #include "../net/netevent.hh"
 #include "../event_queue.hh"
-#include "../renderer/gl_state.hh"
 #include "../console.hh"
 #include "../game/resources.hh"
 #if USE_SERVER
@@ -51,9 +50,6 @@ struct S_EXPORT client_t
   void disconnect();
 #endif
 
-  gl_state_t &gl_state();
-  const gl_state_t &gl_state() const;
-
   /* Adds a system to the list of systems to update/send events to. Does not
   check to see if the system is already in the list. */
   void add_system(system_t *system, int logic_priority = 0, int draw_priority = 0);
@@ -89,7 +85,6 @@ private:
 
   GLFWwindow *              window_ = NULL;
   event_queue_t             event_queue_;
-  gl_state_t                state_;
   std::list<system_pair_t>  logic_systems_ { };
   std::list<system_pair_t>  draw_systems_  { };
   cvar_set_t                cvars_;
