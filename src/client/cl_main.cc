@@ -248,20 +248,6 @@ void client_t::disconnect()
 
 
 
-gl_state_t &client_t::gl_state()
-{
-  return state_;
-}
-
-
-
-const gl_state_t &client_t::gl_state() const
-{
-  return state_;
-}
-
-
-
 // must be run on main queue
 void client_t::terminate()
 {

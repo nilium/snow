@@ -1,5 +1,4 @@
 #include "vertex_array.hh"
-#include "gl_state.hh"
 #include "gl_error.hh"
 
 namespace snow {
