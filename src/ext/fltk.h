@@ -12,8 +12,6 @@
 #include <FL/Fl_Browser.H>
 #include <FL/Fl_Browser_.H>
 #include <FL/Fl_Button.H>
-#include <FL/Fl_Cairo.H>
-#include <FL/Fl_Cairo_Window.H>
 #include <FL/Fl_Chart.H>
 #include <FL/Fl_Check_Browser.H>
 #include <FL/Fl_Check_Button.H>
@@ -36,7 +34,6 @@
 #include <FL/Fl_FormsPixmap.H>
 #include <FL/Fl_Free.H>
 #include <FL/Fl_GIF_Image.H>
-#include <FL/Fl_Gl_Window.H>
 #include <FL/Fl_Group.H>
 #include <FL/Fl_Help_Dialog.H>
 #include <FL/Fl_Help_View.H>
