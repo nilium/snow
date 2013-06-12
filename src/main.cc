@@ -6,7 +6,7 @@
 
 static void nullify_log_callback()
 {
-  s_set_log_callback(nullptr, nullptr);
+  snow::s_set_log_callback(nullptr, nullptr);
 }
 
 
