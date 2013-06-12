@@ -199,13 +199,7 @@ newoption {
 
 newoption {
   trigger = "no-server",
-  description = "Disables the server code in the engine build"
-}
-
-newoption {
-  trigger = "with-tbb",
-  description = "Specify a path to Intel's Threading Building Blocks",
-  value = "/path/to/tbb"
+  description = "Disables the server code in the engine build."
 }
 
 if os.is("macosx") then
@@ -281,14 +275,10 @@ links { "c++" }
 local target_path_osx = "bin/snow.app/Contents/MacOS/snow"
 local change_libs_osx = {
   ["libphysfs.1.dylib"]                                = "@executable_path/../Frameworks/libphysfs.dylib",
-  ["libtbb_debug.dylib"]                               = "@executable_path/../Frameworks/libtbb_debug.dylib",
-  ["libtbb.dylib"]                                     = "@executable_path/../Frameworks/libtbb.dylib",
-  ["libtbbmalloc.dylib"]                               = "@executable_path/../Frameworks/libtbbmalloc.dylib",
-  ["libtbbmalloc_debug.dylib"]                         = "@executable_path/../Frameworks/libtbbmalloc_debug.dylib",
-  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.dylib"
-  --["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
-  -- ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
-  -- ["/usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib"] = "@executable_path/../Frameworks/libssl.dylib"
+  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.dylib",
+  ["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
+  ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
+  ["/usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib"] = "@executable_path/../Frameworks/libssl.dylib"
 }
 
 do
@@ -306,27 +296,6 @@ end
 
 -- files { "src/main.mm" }
 -- excludes { "src/main.cc" }
-
--- TBB
-local build_with_tbb = false
-if build_with_tbb then
-  configuration {}
-  local tbb_path = "~/source/tbb-4-1"
-  if _OPTIONS["with-tbb"] then
-    tbb_path = _OPTIONS["with-tbb"]
-  end
-
-  libdirs { tbb_path .. "/lib" }
-  includedirs { tbb_path .. "/include" }
-
-  configuration "debug"
-  links { "tbb_debug" }
-  -- links { "tbbmalloc_debug" }
-
-  configuration "not debug"
-  links { "tbb" }
-  -- links { "tbbmalloc" }
-end
 
 -- pkg-config packages
 configuration {}
