@@ -103,7 +103,8 @@ rdraw_2d_t &rdraw_2d_t::operator = (rdraw_2d_t &&other)
 
 /*!
   Draws the contents of the 2D drawer using the given vertex array object. The
-  VAO must have been previously built using build_vertex_array.
+  VAO must have been previously built using build_vertex_array. There is no
+  VAO bound on return.
 
   \param in vao The vertex array object. This must have been ubilt using
   build_vertex_array.
@@ -147,7 +148,6 @@ void rdraw_2d_t::draw_with_vertex_array(rvertex_array_t &vao, GLintptr ib_where)
   }
 
   rvertex_array_t::unbind();
-  assert_gl("Unbinding vertex array object");
 }
 
 
@@ -209,11 +209,9 @@ rvertex_array_t rdraw_2d_t::build_vertex_array(const GLuint position_attrib,
 {
   rvertex_array_t vao;
 
-  // Build vao without initializer
-
-  indices.bind_as(GL_ELEMENT_ARRAY_BUFFER);
   vao.bind();
   vertices.bind_as(GL_ARRAY_BUFFER);
+  indices.bind_as(GL_ELEMENT_ARRAY_BUFFER);
 
   // Enable attribute arrays
   vao.enable_attrib(position_attrib);

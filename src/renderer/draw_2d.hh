@@ -53,8 +53,8 @@ struct rdraw_2d_t
   /*
     Builds a vertex array object with the 2D drawing's data and returns it.
     If either buffer cannot contain its respective data given the offset, the
-    buffer will be resized to at least fit it exactly. The returned VAO will
-    already be bound.
+    buffer will be resized to at least fit it exactly. There will be no VAO
+    bound on return.
   */
   rvertex_array_t build_vertex_array(const GLuint position_attrib,
     const GLuint texcoord_attrib, const GLuint color_attrib,
