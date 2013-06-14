@@ -59,39 +59,6 @@ function snow.formatrb_string(t)
 end
 
 
---[[----------------------------------------------------------------------------
-  get_headers
-
-    Retrieves a list of all headers, excluding any that match the suffixes in
-    the excluded_suffixes argument (if provided).
-------------------------------------------------------------------------------]]
-function snow.get_headers(excluded_suffixes)
-  local headers = snow.join_arrays(
-    os.matchfiles("include/**.hh"),
-    os.matchfiles("include/**.cc"),
-    os.matchfiles("include/*.hh"),
-    os.matchfiles("include/*.cc") )
-  local swap = {}
-  for header_k, header_path in pairs(headers) do
-    if excluded_suffixes then
-      -- Check for exclusions
-      for excl_k, excl_suffix in pairs(excluded_suffixes) do
-        if string.endswith(header_path, excl_suffix) then
-          print(excl_k .. ": Excluding " .. header_path)
-          header_path = nil
-          break
-        end -- if matches excluded header
-      end -- for in excluded_suffixes
-    end -- if excluded_suffixes
-
-    if header_path then
-      swap[header_path] = header_path
-    end
-  end -- for in headers
-  return swap
-end
-
-
 function snow.install(source_path, install_path, verbose)
   if verbose then
     print("Installing '" .. source_path .."' to '" .. install_path .. "'")
