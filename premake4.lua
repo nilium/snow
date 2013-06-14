@@ -254,7 +254,7 @@ buildoptions  { '`fltk-config --cxxflags`' }
 
 -- Add sources/include directories
 includedirs   { "include" }
-local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"))
+local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"), os.matchfiles("src/**.mm"))
 files(cxx_files)
 
 configuration "not with-server"
