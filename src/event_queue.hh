@@ -39,7 +39,7 @@ struct S_EXPORT event_queue_t
 
 private:
 
-  static void   ecb_key_event(GLFWwindow *window, int key, int action, int mods);
+  static void   ecb_key_event(GLFWwindow *window, int key, int scancode, int action, int mods);
   static void   ecb_mouse_event(GLFWwindow *window, int button, int action, int mods);
   static void   ecb_char_event(GLFWwindow *window, unsigned int character);
   static void   ecb_mouse_pos_event(GLFWwindow *window, double x, double y);

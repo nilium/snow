@@ -156,8 +156,9 @@ void event_queue_t::set_window_callbacks(GLFWwindow *window, int events_mask)
 *                        Event callback implementations                        *
 *******************************************************************************/
 
-void event_queue_t::ecb_key_event(GLFWwindow *window, int key, int action, int mods)
+void event_queue_t::ecb_key_event(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
+  (void)scancode;
   auto queue = (event_queue_t *)glfwGetWindowUserPointer(window);
   if (queue) {
     event_t event = {EVENT_SENDER_WINDOW, {window}, KEY_EVENT, queue->frame_time_};
