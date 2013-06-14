@@ -9,8 +9,8 @@
 
 #if __has_feature(objc_arc)
 
-#define AUTORELEASE_PUSH() @autoreleasepool {
-#define AUTORELEASE_POP() }
+#define AUTORELEASE_PUSH() do { @autoreleasepool {
+#define AUTORELEASE_POP() } } while (0)
 
 #elif S_PLATFORM_APPLE && !__has_feature(objc_arc)
 
@@ -19,8 +19,8 @@
 
 #else
 
-#define AUTORELEASE_PUSH()
-#define AUTORELEASE_POP()
+#define AUTORELEASE_PUSH() do {
+#define AUTORELEASE_POP() } while (0)
 
 #endif
 
