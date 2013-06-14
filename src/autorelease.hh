@@ -7,6 +7,14 @@
 #define __has_feature(F) 0
 #endif
 
+/*
+AUTORELEASE_PUSH and AUTORELEASE_POP work on more or less the same idea as
+Obj-C's @autoreleasepool { ... } blocks. So, they must remain in the same scope,
+variables declared between them will cease to exist outside of them, and so on.
+
+Basically, treat them as though they're { ... } blocks, because they are.
+*/
+
 #if __has_feature(objc_arc)
 
 #define AUTORELEASE_PUSH() do { @autoreleasepool {
