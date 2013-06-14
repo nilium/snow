@@ -47,16 +47,16 @@ bool console_pane_t::event(const event_t &event)
       propagate = false;
       break;
 
-    case GLFW_KEY_F12:
-      if (event.key.action) {
+    case GLFW_KEY_WORLD_1:
+      if (event.key.action == GLFW_PRESS && event.key.mods == GLFW_MOD_SHIFT) {
         open_ = !open_;
         #if HIDE_CURSOR_ON_CONSOLE_CLOSE
         if (wnd_mouseMode) {
           wnd_mouseMode->seti(open_);
         }
         #endif
+        propagate = false;
       }
-      propagate = false;
       break;
 
     case GLFW_KEY_ENTER:
@@ -84,7 +84,7 @@ bool console_pane_t::event(const event_t &event)
       break;
     }
 
-    if (event.character >= ' ' && event.character <= '~') {
+    if (event.character >= ' ' && event.character < '~') {
       // FIXME: handle non-ASCII characters
       u8::append(event.character, std::back_inserter(buffer_));
       propagate = false;
