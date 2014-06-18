@@ -226,7 +226,6 @@ uint32_t lexer_t::read_next()
     current_.code = 0;
   }
 
-
   return current_.code;
 }
 
