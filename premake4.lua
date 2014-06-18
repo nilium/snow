@@ -358,10 +358,7 @@ local target_path_osx = "bin/snow.app/Contents/MacOS/snow"
 local change_libs_osx = {
   ["libphysfs.1.dylib"]                                = "@executable_path/../Frameworks/libphysfs.dylib",
   ["/usr/local/lib/libzmq.3.dylib"]                    = "@executable_path/../Frameworks/libzmq.dylib",
-  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.dylib",
-  ["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
-  ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
-  ["/usr/local/opt/openssl/lib/libcrypto.1.0.0.dylib"] = "@executable_path/../Frameworks/libssl.dylib"
+  ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.dylib"
 }
 
 do
