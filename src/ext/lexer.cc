@@ -528,11 +528,6 @@ lexer_error_t lexer_t::run(string::const_iterator &begin, const string::const_it
     token.pos = current_.pos;
 
     switch (cur) {
-
-      token.kind = TOK_AT;
-      token.value = token_descriptors[TOK_AT];
-      break;
-
       // TOK_DOT, TOK_DOUBLE_DOT, TOK_TRIPLE_DOT
     case '.':
       switch (peek_next()) {
@@ -564,7 +559,6 @@ lexer_error_t lexer_t::run(string::const_iterator &begin, const string::const_it
         break;
       default:
         token.kind = TOK_SLASH;
-        token.value = token_descriptors[TOK_SLASH];
         goto lex_build_token;
       }
       break;
