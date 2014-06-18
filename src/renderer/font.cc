@@ -193,7 +193,7 @@ void rfont_t::draw_text(
 
   uint32_t last_code = 0;
   auto iter = text.begin();
-  auto str_end = utf8::find_invalid(iter, text.end());
+  auto str_end = text.end(); // utf8::find_invalid(iter, text.end());
   auto glyph_end = glyphs_.cend();
   // unknown character
   glyphmap_t::const_iterator unknown = glyphs_.find(0xFFFD /* replacement character */ );
