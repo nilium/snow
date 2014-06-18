@@ -335,7 +335,7 @@ void rtexture_t::zero()
 
 
 
-void rtexture_t::set_source(const string_t &src)
+void rtexture_t::set_source(const string &src)
 {
   assert(src.size() < MAX_SOURCE_LENGTH);
   std::memcpy(source_, src.c_str(), src.size());

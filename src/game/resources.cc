@@ -137,7 +137,7 @@ rfont_t *resources_t::load_font(const string &name)
       sqlite3_snprintf(MAX_PATH_LEN, temp_namebuffer, FONTPAGE_MATERIAL_FORMAT,
         name.c_str(), fontpage_index);
 
-      string_t window(temp_namebuffer, std::strlen(temp_namebuffer), true);
+      string window(temp_namebuffer, std::strlen(temp_namebuffer), true);
       rmaterial_t *material = load_material(window);
       if (!material) {
         material = load_material(NULL_MATERIAL_NAME);
