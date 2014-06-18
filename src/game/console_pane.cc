@@ -8,12 +8,8 @@
 #include "../renderer/draw_2d.hh"
 #include "../renderer/font.hh"
 #include "../console.hh"
-#include "../ext/utf8/unchecked.h"
 #include "../event_queue.hh"
 #include "resources.hh"
-
-
-namespace u8 = utf8::unchecked;
 
 
 #define VERTEX_OFFSET   (0)
@@ -35,9 +31,9 @@ bool console_pane_t::event(const event_t &event)
       if (!buffer_.empty()) {
         auto end = buffer_.cend();
         auto iter = buffer_.cbegin();
-        auto codes = u8::distance(iter, end);
+        auto codes = utf8::distance(iter, end);
         if (codes > 1) {
-          u8::advance(iter, codes - 1);
+          utf8::advance(iter, end, codes - 1);
           buffer_.erase(iter, end);
         } else {
           buffer_.clear();
@@ -86,7 +82,7 @@ bool console_pane_t::event(const event_t &event)
 
     if (event.character >= ' ' && event.character < '~') {
       // FIXME: handle non-ASCII characters
-      u8::append(event.character, std::back_inserter(buffer_));
+      utf8::put_code(std::back_inserter(buffer_), event.character);
       propagate = false;
     }
     break;

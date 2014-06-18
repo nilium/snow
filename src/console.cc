@@ -6,8 +6,6 @@
 #include "console.hh"
 #include <cstdlib>
 #include <snow/data/hash.hh>
-#include "ext/utf8/core.h"
-#include "ext/utf8/unchecked.h"
 
 
 namespace snow {
@@ -487,11 +485,10 @@ void ccmd_t::call(const string &args_str)
 
 size_t ccmd_t::ccmd_arg_iters(const string &str, args_t &out, size_t max)
 {
-  namespace u8 = ::utf8::unchecked;
   size_t count = 0;
-  u8::iterator<string::const_iterator> first(str.cbegin());
-  u8::iterator<string::const_iterator> second = first;
-  u8::iterator<string::const_iterator> end(str.cend());
+  string::const_iterator end = str.cend();
+  utf8::iterator<string::const_iterator> first { str.cbegin(), end };
+  utf8::iterator<string::const_iterator> second { first, end };
 
   while (first != end) {
     uint32_t delim = 0;
@@ -517,7 +514,7 @@ size_t ccmd_t::ccmd_arg_iters(const string &str, args_t &out, size_t max)
         }
       }
 
-      out.push_back({ first.base(), second.base() });
+      out.push_back({ first, second });
       ++count;
 
       if (second != end) {
@@ -532,7 +529,7 @@ size_t ccmd_t::ccmd_arg_iters(const string &str, args_t &out, size_t max)
       for (; second != end && *second != ' '; ++second) {
         // nop
       }
-      out.push_back({ first.base(), second.base() });
+      out.push_back({ first, second });
       ++count;
       break;
     } // switch
@@ -542,7 +539,7 @@ size_t ccmd_t::ccmd_arg_iters(const string &str, args_t &out, size_t max)
 
   // For cases when count is reached before
   if (first != end) {
-    out.push_back({ first.base(), second.base() });
+    out.push_back({ first, second });
     ++count;
   }
 

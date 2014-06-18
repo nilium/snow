@@ -5,12 +5,8 @@
 */
 #include "font.hh"
 #include "../data/database.hh"
-#include "../ext/utf8/unchecked.h"
 #include "draw_2d.hh"
 #include <algorithm>
-
-
-namespace u8 = utf8::unchecked;
 
 
 namespace snow {
@@ -199,7 +195,7 @@ void rfont_t::draw_text(
   glyphmap_t::const_iterator unknown = glyphs_.find(0xFFFD /* replacement character */ );
 
   while (iter != str_end) {
-    uint32_t code = u8::next(iter);
+    uint32_t code = utf8::next_code(iter, str_end);
 
     if (code == '\n') {
       if (ignore_newlines) {
