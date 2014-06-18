@@ -122,6 +122,8 @@ client_t::~client_t()
 }
 
 
+const int DEFAULT_WINDOW_WIDTH  = 1280;
+const int DEFAULT_WINDOW_HEIGHT = 800;
 
 // must be run on main queue
 void client_t::initialize(int argc, const char *argv[])
@@ -129,7 +131,7 @@ void client_t::initialize(int argc, const char *argv[])
   cl_global_init();
 
   s_log_note("Initializing window");
-  window_ = glfwCreateWindow(800, 600, "Snow", NULL, NULL);
+  window_ = glfwCreateWindow(DEFAULT_WINDOW_WIDTH, DEFAULT_WINDOW_HEIGHT, "Snow", NULL, NULL);
   if (!window_) {
     s_log_note("Window failed to initialize");
     s_throw(std::runtime_error, "Failed to create GLFW window");
