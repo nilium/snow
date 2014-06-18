@@ -17,7 +17,7 @@
 // #define S_LOG_NOTE_PREFIX "N"
 
 #include <snow/config.hh>
-#include <snow-common.hh>
+#include <snow/snow-common.hh>
 
 static_assert(std::numeric_limits<float>::is_iec559, "float is not IEEE 754 compatible");
 static_assert(std::numeric_limits<double>::is_iec559, "float is not IEEE 754 compatible");

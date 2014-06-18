@@ -4,7 +4,7 @@
   is not present, refer to <https://raw.github.com/nilium/snow/master/COPYING>.
 */
 #include "sv_main.hh"
-#include <snow-common.hh>
+#include <snow/snow-common.hh>
 #include "../net/netevent.hh"
 #include "../renderer/sgl.hh"
 #include "../timing.hh"

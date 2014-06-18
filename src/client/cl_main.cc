@@ -13,7 +13,7 @@
 #include "../sys_main.hh"
 #include "../renderer/gl_error.hh"
 
-#include <snow-common.hh>
+#include <snow/snow-common.hh>
 
 #include "../server/sv_main.hh"
 
