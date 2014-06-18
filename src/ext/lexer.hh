@@ -13,7 +13,7 @@
 namespace snow {
 
 
-enum token_kind_t : unsigned {
+enum token_kind_t : int {
   TOK_INVALID=0,
 
   TOK_TRUE_KW,

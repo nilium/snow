@@ -10,7 +10,6 @@
 #include <cstdarg>
 #include <array>
 #include <sstream>
-#include "utf8/unchecked.h"
 
 
 namespace snow {
@@ -222,7 +221,7 @@ uint32_t lexer_t::read_next()
 
   if (current_.place != source_end_) {
     ++current_.pos.column;
-    current_.code = utf8::unchecked::next(current_.place);
+    current_.code = utf8::next_code(current_.place, source_end_);
   } else {
     current_.code = 0;
   }
@@ -236,7 +235,7 @@ uint32_t lexer_t::read_next()
 uint32_t lexer_t::peek_next() const
 {
   if (current_.place != source_end_) {
-    return utf8::unchecked::peek_next(current_.place);
+    return utf8::peek_code(current_.place, source_end_);
   } else {
     return 0;
   }
@@ -309,7 +308,7 @@ void lexer_t::read_number(token_t &token)
         return;
       }
       isExp = true;
-      token.kind = token_kind_t(unsigned(token.kind) + 2);
+      token.kind = static_cast<token_kind_t>(static_cast<int>(token.kind) + 2);
       cur = read_next();
       if (cur == '-' || cur == '+') {
         cur = read_next();
@@ -426,7 +425,7 @@ void lexer_t::read_string(token_t &token, const uint32_t delim)
         continue;
       }
     }
-    utf8::unchecked::append(cur, inserter);
+    utf8::put_code(inserter, cur);
   }
 
   if (cur == 0) {
@@ -546,7 +545,7 @@ lexer_error_t lexer_t::run(string::const_iterator &begin, const string::const_it
 
         while(token.kind < TOK_TRIPLE_DOT && peek_next() == '.') {
           read_next();
-          ++token.kind;
+          token.kind = static_cast<token_kind_t>(static_cast<int>(token.kind) + 1);
         }
 
         token.value = token_descriptors[token.kind];
@@ -619,10 +618,10 @@ lex_doubled_token_read:
       next = peek_next();
 lex_doubled_token_noread:
       if (next == cur || (cur == '!' && next == '=')) {
-        ++token.kind;
+        token.kind = static_cast<token_kind_t>(static_cast<int>(token.kind) + 1);
         read_next();
       } else if (token.kind < TOK_PIPE && next == '=') {
-        token.kind = (token_kind_t)((unsigned)token.kind + 2);
+        token.kind = static_cast<token_kind_t>(static_cast<int>(token.kind) + 2);
         read_next();
       }
       token.value = token_descriptors[token.kind];
