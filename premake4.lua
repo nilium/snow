@@ -171,6 +171,41 @@ buildoptions  { "-arch x86_64" }
 end
 
 
+--[[ snow_objcxx_libs project ------------------------------------------]] do
+project       "snow_objcxx_libs"
+kind          "StaticLib"
+targetdir     "lib"
+
+language      "C++"
+files( os.matchfiles("src/**.mm") )
+
+flags         { "FloatStrict", "NoRTTI" }
+
+buildoptions  { "-arch x86_64" }
+buildoptions  { "-include src/snow.objc.hh" }
+
+buildoptions  { "-std=c++11" }
+
+configuration { "macosx" }
+buildoptions  { "-stdlib=libc++" }
+links         { "c++" }
+
+configuration { "not with-exceptions" }
+flags         { "NoExceptions" }
+
+configuration { "macosx", "release" }
+buildoptions  { "-O3" }
+
+configuration "release"
+defines       { "NDEBUG" }
+
+configuration "debug"
+defines       { "DEBUG" }
+flags         { "Symbols" }
+
+end
+
+
 --[[ snowhash project ---------------------------------------------]] do
 project       "snowhash"
 language      "C++"
@@ -190,6 +225,50 @@ links         { "c++" }
 configuration { "not with-exceptions" }
 flags         { "NoExceptions" }
 
+configuration { "macosx", "release" }
+buildoptions  { "-O3" }
+
+configuration "release"
+defines       { "NDEBUG" }
+
+configuration "debug"
+defines       { "DEBUG" }
+flags         { "Symbols" }
+
+end
+
+
+--[[ snowhost project ---------------------------------------------]] do
+project       "snowhost"
+language      "C++"
+kind          "ConsoleApp"
+files         { "host.cc" }
+
+-- Link snow-common
+linkoptions   { '`pkg-config --libs snow-common`' }
+buildoptions  { '`pkg-config --cflags snow-common`' }
+
+links { "zmq" }
+
+buildoptions  { "-std=c++11" }
+
+configuration { "macosx" }
+buildoptions  { "-stdlib=libc++" }
+links         { "c++" }
+
+configuration { "not with-exceptions" }
+flags         { "NoExceptions" }
+
+configuration { "macosx", "release" }
+buildoptions  { "-O3" }
+
+configuration "release"
+defines       { "NDEBUG" }
+
+configuration "debug"
+defines       { "DEBUG" }
+flags         { "Symbols" }
+
 end
 
 
@@ -205,6 +284,9 @@ links         { "angelscript" }
 local g_exclude_suffixes = {}
 
 
+buildoptions { "-include '" .. path.getabsolute('src') .. "/snow.cxx.hh'"}
+
+
 -- Compiler flags
 local g_version = "0.0.1"
 language      "C++"
@@ -214,24 +296,25 @@ objdir        "obj"
 
 -- Libraries
 links         { "zmq" }
-links         { "physfs", "snow_c_libs" }
+links         { "physfs", "snow_c_libs", "snow_objcxx_libs" }
 linkoptions   { '`fltk-config --ldflags`' }
 buildoptions  { '`fltk-config --cxxflags`' }
 
 
 -- Add sources/include directories
 includedirs   { "include" }
-local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"), os.matchfiles("src/**.mm"))
+local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"))
 files(cxx_files)
+excludes "src/snow.cc" -- pch only
 
 configuration "not with-server"
 excludes      { "src/server/*" }
 
-configuration "release"
-defines       { "NDEBUG" }
-
 configuration { "macosx", "release" }
 buildoptions  { "-O3" }
+
+configuration "release"
+defines       { "NDEBUG" }
 
 configuration "debug"
 defines       { "DEBUG" }
@@ -274,6 +357,7 @@ links         { "c++" }
 local target_path_osx = "bin/snow.app/Contents/MacOS/snow"
 local change_libs_osx = {
   ["libphysfs.1.dylib"]                                = "@executable_path/../Frameworks/libphysfs.dylib",
+  ["/usr/local/lib/libzmq.3.dylib"]                    = "@executable_path/../Frameworks/libzmq.dylib",
   ["/usr/local/lib/libenet.2.dylib"]                   = "@executable_path/../Frameworks/libenet.dylib",
   ["/usr/local/opt/sqlite/lib/libsqlite3.0.8.6.dylib"] = "@executable_path/../Frameworks/libsqlite3.dylib",
   ["/usr/local/opt/openssl/lib/libssl.1.0.0.dylib"]    = "@executable_path/../Frameworks/libcrypto.dylib",
