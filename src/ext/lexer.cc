@@ -221,7 +221,7 @@ uint32_t lexer_t::read_next()
 
   if (current_.place != source_end_) {
     ++current_.pos.column;
-    current_.code = utf8::next_code(current_.place, source_end_);
+    current_.code = utf8::next_code<false>(current_.place, source_end_);
   } else {
     current_.code = 0;
   }
