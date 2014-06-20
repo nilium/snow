@@ -13,19 +13,17 @@ The Snow engine is currently only running on Mac OS X. To build it, you'll need
 Premake 4.4, a C++11 compiler and standard library as well as the following
 other libraries:
 
+- [libsnow-common](https://github.com/nilium/libsnow-common)
 - [AngelScript](http://www.angelcode.com/angelscript)
 - [Enet](http://enet.bespin.org)
 - [FLTK](http://www.fltk.org/index.php)
 - [GLFW 3](https://github.com/glfw/glfw)
-- [libsnow-common](https://github.com/nilium/libsnow-common)
 - [PhysicsFS](http://icculus.org/physfs/)
 - [ZeroMQ](http://www.zeromq.org)
 
-You may also need OpenSSL depending on how libsnow-common is built. On
-Mac OS X, the libc++ standard library is used in place of libstdc++ due to the
-latter still being incompatible with C++11 in odd ways. As such, building this
-on non-Apple platforms may not yet be feasible. Time will likely iron out that
-issue.
+On Mac OS X, the libc++ standard library is used in place of libstdc++ due to
+the latter still being incompatible with C++11 in odd ways. As such, building
+this on non-Apple platforms might be tricky. Time should iron out that issue.
 
 Once built, the engine requires a 'base' directory in one of two places,
 depending on the platform:
