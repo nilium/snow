@@ -277,8 +277,6 @@ project       "snow"
 targetdir     "bin"
 kind          "WindowedApp"
 
-links         { "angelscript" }
-
 
 -- Option defaults
 local g_exclude_suffixes = {}
