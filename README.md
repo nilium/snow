@@ -14,7 +14,6 @@ Premake 4.4, a C++11 compiler and standard library as well as the following
 other libraries:
 
 - [libsnow-common](https://github.com/nilium/libsnow-common)
-- [AngelScript](http://www.angelcode.com/angelscript)
 - [Enet](http://enet.bespin.org)
 - [FLTK](http://www.fltk.org/index.php)
 - [GLFW 3](https://github.com/glfw/glfw)
