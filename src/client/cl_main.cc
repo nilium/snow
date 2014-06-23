@@ -56,7 +56,6 @@ void client_cleanup();
 void cl_global_init()
 {
   std::call_once(g_init_flag, [] {
-    glfwDefaultWindowHints();
 #if !S_USE_GL_2
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
