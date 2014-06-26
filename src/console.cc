@@ -522,16 +522,16 @@ size_t ccmd_t::ccmd_arg_iters(const string &str, args_t &out, size_t max)
       }
     } break;
 
-    default:
-    second = first;
-    ++second;
+    default: {
+      second = first;
+      ++second;
 
       for (; second != end && *second != ' '; ++second) {
         // nop
       }
       out.push_back({ first, second });
       ++count;
-      break;
+    } break;
     } // switch
 
     first = second;
