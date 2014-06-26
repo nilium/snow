@@ -66,9 +66,9 @@ protected:
   void terminate();
   void run_frameloop();
   void frameloop();
-  virtual void read_events(double timeslice);
-  virtual void do_frame(double step, double timeslice);
-  virtual void dispose();
+  void read_events(double timeslice);
+  void do_frame(double step, double timeslice);
+  void dispose();
 #if USE_SERVER
   void pump_netevents(double timeslice);
 #endif
