@@ -7,35 +7,54 @@
 #define __has_feature(F) 0
 #endif
 
-/*
-AUTORELEASE_PUSH and AUTORELEASE_POP work on more or less the same idea as
-Obj-C's @autoreleasepool { ... } blocks. So, they must remain in the same scope,
-variables declared between them will cease to exist outside of them, and so on.
-
-Basically, treat them as though they're { ... } blocks, because they are.
-*/
-
-#if __has_feature(objc_arc)
-
-#define AUTORELEASE_PUSH() do { @autoreleasepool {
-#define AUTORELEASE_POP() } } while (0)
-
-#elif S_PLATFORM_APPLE && !__has_feature(objc_arc)
-
-#define AUTORELEASE_PUSH() do { void *OBJC_ARPOOL___ = ::snow::autorelease_push()
-#define AUTORELEASE_POP() ::snow::autorelease_pop(OBJC_ARPOOL___); } while (0)
-
-#else
-
-#define AUTORELEASE_PUSH() do {
-#define AUTORELEASE_POP() } while (0)
-
-#endif
 
 namespace snow {
 
+
+namespace aux_apple_ {
+
 S_EXPORT void *autorelease_push();
-S_EXPORT void autorelease_pop(void *pool);
+S_EXPORT void autorelease_pop(void *pool) noexcept;
+
+} // namespace aux_apple_
+
+
+template <typename Block, typename... Args>
+auto with_autorelease(Block &&block, Args &&... argv)
+  -> decltype(block(std::forward<Args>(argv)...))
+{
+
+#if S_PLATFORM_APPLE
+
+#if __has_feature(objc_arc)
+  // Use ARC block
+
+  @autoreleasepool {
+    return block(std::forward<Args>(argv)...);
+  };
+
+#else
+  // Use non-ARC wrapper functions
+
+  void *pool = aux_apple_::autorelease_push();
+  try {
+    return block(std::forward<Args>(argv)...);
+  } catch (...) {
+    aux_apple_::autorelease_pop(pool);
+    throw;
+  }
+
+#endif
+
+#else // !S_PLATFORM_APPLE
+  // No-op, just execute the block (likely inlined)
+
+  return block(std::forward<Args>(argv)...);
+
+#endif
+
+}
+
 
 } // namespace snow
 

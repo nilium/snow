@@ -177,15 +177,11 @@ void client_t::initialize(int argc, const char *argv[])
   // Launch frameloop thread
   s_log_note("Launching frameloop");
 
-  #if !S_PLATFORM_APPLE
-  async_thread(&client_t::run_frameloop, this);
-  #else
   async_thread([&] {
-    AUTORELEASE_PUSH();
-    run_frameloop();
-    AUTORELEASE_POP();
+    with_autorelease([&] {
+      run_frameloop();
+    });
   });
-  #endif
 
   for (poll_events_ = true; poll_events_;) {
     #define USE_FLTK_EVENT_POLLING 1

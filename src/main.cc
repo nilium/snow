@@ -20,18 +20,18 @@ int main(int argc, char const *argv[])
 {
   using namespace snow;
 
-  AUTORELEASE_PUSH();
+  with_autorelease([argc, argv] {
 
 #ifdef S_USE_CONTROLFP
-  _controlfp(_PC_24, _MCW_PC);
-  _controlfp(_RC_NEAR, _MCW_RC);
+    _controlfp(_PC_24, _MCW_PC);
+    _controlfp(_RC_NEAR, _MCW_RC);
 #endif
 
-  std::atexit(nullify_log_callback);
-  sys_init(argc, argv);
-  client_t::get_client(client_t::DEFAULT_CLIENT_NUM).initialize(argc, argv);
+    std::atexit(nullify_log_callback);
+    sys_init(argc, argv);
+    client_t::get_client(client_t::DEFAULT_CLIENT_NUM).initialize(argc, argv);
 
-  AUTORELEASE_POP();
+  });
 
   return 0;
 }
