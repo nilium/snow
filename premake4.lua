@@ -140,12 +140,6 @@ end -- mkdir_p
 solution "snow"
 configurations { "debug", "release" }
 
--- Build options
-newoption {
-  trigger = "with-exceptions",
-  description = "Enables exceptions -- if disabled, throws are replaced with std::abort()"
-}
-
 newoption {
   trigger = "with-server",
   description = "Enables the server code in the engine build."
@@ -190,9 +184,6 @@ configuration { "macosx" }
 buildoptions  { "-stdlib=libc++" }
 links         { "c++" }
 
-configuration { "not with-exceptions" }
-flags         { "NoExceptions" }
-
 configuration { "macosx", "release" }
 buildoptions  { "-O3" }
 
@@ -221,9 +212,6 @@ buildoptions  { "-std=c++11" }
 configuration { "macosx" }
 buildoptions  { "-stdlib=libc++" }
 links         { "c++" }
-
-configuration { "not with-exceptions" }
-flags         { "NoExceptions" }
 
 configuration { "macosx", "release" }
 buildoptions  { "-O3" }
@@ -255,9 +243,6 @@ buildoptions  { "-std=c++11" }
 configuration { "macosx" }
 buildoptions  { "-stdlib=libc++" }
 links         { "c++" }
-
-configuration { "not with-exceptions" }
-flags         { "NoExceptions" }
 
 configuration { "macosx", "release" }
 buildoptions  { "-O3" }
@@ -320,21 +305,13 @@ flags         { "Symbols" }
 
 
 local g_build_config_opts = {
-  USE_EXCEPTIONS = false,
+  USE_EXCEPTIONS = true,
   USE_SERVER = false
 }
-
-if _OPTIONS["with-exceptions"] ~= nil then
-  g_build_config_opts.USE_EXCEPTIONS = not not _OPTIONS["with-exceptions"]
-end
 
 if _OPTIONS["with-server"] ~= nil then
   g_build_config_opts.USE_SERVER = not not _OPTIONS["with-server"]
 end
-
--- Exceptions
-configuration "not with-exceptions"
-flags         { "NoExceptions" }
 
 -- OS X specific options
 configuration "macosx"
