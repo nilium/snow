@@ -19,7 +19,7 @@ namespace snow {
 #define DECL_COMPONENT_CTOR_DTOR(CLASSNAME)                                   \
 CLASSNAME ();                                                                 \
 CLASSNAME (game_object_t *);                                                  \
-virtual ~CLASSNAME ();                                                        \
+~CLASSNAME () override;                                                       \
 static constexpr const char *COMPONENT_NAME = #CLASSNAME
 
 

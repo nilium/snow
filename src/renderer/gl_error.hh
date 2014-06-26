@@ -17,7 +17,7 @@ struct S_EXPORT gl_error_t : public std::runtime_error
 {
   gl_error_t(const std::string &what);
   gl_error_t(const std::string &what, GLenum error);
-  virtual ~gl_error_t();
+  ~gl_error_t() override;
 };
 
 

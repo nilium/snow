@@ -21,7 +21,7 @@ struct point_light_t : component_t<point_light_t, LIGHT_COMPONENT, 256>
 
   point_light_t();
   point_light_t(game_object_t *obj);
-  virtual ~point_light_t();
+  ~point_light_t() override;
 
   float radius;
   vec4f_t color;

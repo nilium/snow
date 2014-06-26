@@ -25,9 +25,9 @@ struct rmaterial_t;
 
 struct console_pane_t : public system_t
 {
-  virtual bool event(const event_t &event);
-  virtual void frame(double step, double timeslice);
-  virtual void draw(double timeslice);
+  bool event(const event_t &event) override;
+  void frame(double step, double timeslice) override;
+  void draw(double timeslice) override;
 
   void set_cvar_set(cvar_set_t *cvars);
   cvar_set_t *cvar_set() const;

@@ -25,11 +25,11 @@ struct player_t : system_t
 {
 
   player_t();
-  virtual ~player_t();
+  ~player_t() override;
 
-  virtual bool event(const event_t &event);
-  virtual void frame(double step, double timeslice);
-  virtual void draw(double timeslice);
+  bool event(const event_t &event) override;
+  void frame(double step, double timeslice) override;
+  void draw(double timeslice) override;
 
   void set_player(game_object_t *player);
 
