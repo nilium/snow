@@ -50,7 +50,7 @@ private:
   dbresult_t &operator = (const dbresult_t &) = default;
 
   friend struct dbstatement_t;
-  friend struct dbiterator_t;;
+  friend struct dbiterator_t;
 
   dbresult_t(dbstatement_t &stmt);
 
