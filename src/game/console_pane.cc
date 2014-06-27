@@ -28,6 +28,10 @@ bool console_pane_t::event(const event_t &event)
   case KEY_EVENT:
     switch (event.key.button) {
     case GLFW_KEY_BACKSPACE:
+      if (event.key.action == GLFW_RELEASE) {
+        break;
+      }
+
       if (!buffer_.empty()) {
         auto end = buffer_.cend();
         auto iter = buffer_.cbegin();
