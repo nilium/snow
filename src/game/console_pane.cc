@@ -34,13 +34,11 @@ bool console_pane_t::event(const event_t &event)
 
       if (!buffer_.empty()) {
         auto end = buffer_.cend();
-        auto iter = buffer_.cbegin();
-        auto codes = utf8::distance(iter, end);
-        if (codes > 1) {
-          utf8::advance(iter, end, codes - 1);
-          buffer_.erase(iter, end);
-        } else {
+        auto iter = utf8::before(end);
+        if (iter == buffer_.cbegin()) {
           buffer_.clear();
+        } else {
+          buffer_.erase(iter, end);
         }
       }
 
