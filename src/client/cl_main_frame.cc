@@ -8,6 +8,7 @@
 #include "../game/console_pane.hh"
 #include "../renderer/gl_error.hh"
 #include "../timing.hh"
+#include "../deferred.hh"
 #include <thread>
 
 
@@ -164,6 +165,12 @@ void client_t::run_frameloop()
 ==============================================================================*/
 void client_t::frameloop()
 {
+  deferred release_resources {[this]{
+    s_set_log_callback(nullptr, nullptr);
+    res_->release_all();
+    glfwMakeContextCurrent(NULL);
+  }};
+
   // FIXME: Almost all of this crap should be moved to game-specific code.
   {
     console_pane_t &console = default_console();
@@ -261,12 +268,6 @@ void client_t::frameloop()
       }
     } // while (running)
   } // resource dropping scope
-
-  s_set_log_callback(nullptr, nullptr);
-
-  res_->release_all();
-
-  glfwMakeContextCurrent(NULL);
 } // frameloop
 
 
