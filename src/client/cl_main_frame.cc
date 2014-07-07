@@ -172,102 +172,100 @@ void client_t::frameloop()
   }};
 
   // FIXME: Almost all of this crap should be moved to game-specific code.
-  {
-    console_pane_t &console = default_console();
-    s_set_log_callback(cl_log_callback, &console);
+  console_pane_t &console = default_console();
+  s_set_log_callback(cl_log_callback, &console);
 
-    cvars_.clear();
-    cvars_.register_ccmd(&cmd_quit_);
+  cvars_.clear();
+  cvars_.register_ccmd(&cmd_quit_);
 
-    cl_willQuit = cvars_.get_cvar( "cl_willQuit", 0, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
-    wnd_focused = cvars_.get_cvar( "wnd_focused", 1, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
-    wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", true, CVAR_DELAYED | CVAR_INVISIBLE);
-    r_drawFrame = cvars_.get_cvar( "r_drawFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
-    r_clearFrame = cvars_.get_cvar("r_clearFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
+  cl_willQuit = cvars_.get_cvar( "cl_willQuit", 0, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
+  wnd_focused = cvars_.get_cvar( "wnd_focused", 1, CVAR_READ_ONLY | CVAR_DELAYED | CVAR_INVISIBLE );
+  wnd_mouseMode = cvars_.get_cvar("wnd_mouseMode", true, CVAR_DELAYED | CVAR_INVISIBLE);
+  r_drawFrame = cvars_.get_cvar( "r_drawFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
+  r_clearFrame = cvars_.get_cvar("r_clearFrame", 1, CVAR_READ_ONLY | CVAR_DELAYED );
 
-    console.set_cvar_set(&cvars_);
+  console.set_cvar_set(&cvars_);
 
-    glfwShowWindow(window_);
-    glfwMakeContextCurrent(window_);
-    glfwSwapInterval(0);    // Don't needlessly limit rendering speed
+  glfwShowWindow(window_);
+  glfwMakeContextCurrent(window_);
+  glfwSwapInterval(0);    // Don't needlessly limit rendering speed
 
-    // FIXME: move these somewhere else, probably?
-    glClearColor(0, 0, 0, 1);
-    glEnable(GL_BLEND);
+  // FIXME: move these somewhere else, probably?
+  glClearColor(0, 0, 0, 1);
+  glEnable(GL_BLEND);
 
-    add_system(&console, 16777216, -16777216);
+  add_system(&console, 16777216, -16777216);
 
-    // Set this to true before getting the base time since it might loop a couple
-    // times setting it.
-    running_ = true;
-    sim_time_ = 0;
-    // Don't call glfwSetTime because that might throw other clients out of sync
-    // (even though really the chance of there being other clients is zero)
-    base_time_ = glfwGetTime();
-    unsigned frame, last_frame;
-    frame = 1; last_frame = 0;
+  // Set this to true before getting the base time since it might loop a couple
+  // times setting it.
+  running_ = true;
+  sim_time_ = 0;
+  // Don't call glfwSetTime because that might throw other clients out of sync
+  // (even though really the chance of there being other clients is zero)
+  base_time_ = glfwGetTime();
+  unsigned frame, last_frame;
+  frame = 1; last_frame = 0;
 
-    while (running_.load()) {
-  #if HIDE_CURSOR_ON_CONSOLE_CLOSE
-      int mousemode = -1;
-  #endif
+  while (running_.load()) {
+#if HIDE_CURSOR_ON_CONSOLE_CLOSE
+    int mousemode = -1;
+#endif
 
-      // Do any frames that would have passed since the last rendering point
-      const double cur_time = glfwGetTime() - base_time_;
-      while (sim_time_ < cur_time) {
-        sim_time_ += FRAME_SEQ_TIME;
-        ++frame;
-        read_events(sim_time_);
-        do_frame(FRAME_SEQ_TIME, sim_time_);
+    // Do any frames that would have passed since the last rendering point
+    const double cur_time = glfwGetTime() - base_time_;
+    while (sim_time_ < cur_time) {
+      sim_time_ += FRAME_SEQ_TIME;
+      ++frame;
+      read_events(sim_time_);
+      do_frame(FRAME_SEQ_TIME, sim_time_);
 
-  #if HIDE_CURSOR_ON_CONSOLE_CLOSE
-        if (wnd_mouseMode->has_flags(CVAR_MODIFIED)) {
-          wnd_mouseMode->update();
-          mousemode = wnd_mouseMode->geti();
+#if HIDE_CURSOR_ON_CONSOLE_CLOSE
+      if (wnd_mouseMode->has_flags(CVAR_MODIFIED)) {
+        wnd_mouseMode->update();
+        mousemode = wnd_mouseMode->geti();
+      }
+#endif
+
+      cvars_.update_cvars();
+    }
+
+#if HIDE_CURSOR_ON_CONSOLE_CLOSE
+    switch (mousemode) {
+    case 0:
+      glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN);
+      glfwSetInputMode(window_, GLFW_STICKY_KEYS, 1);
+      break;
+    case 1:
+      glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
+      glfwSetInputMode(window_, GLFW_STICKY_KEYS, 0);
+      break;
+    default: break;
+    }
+#endif
+
+    if (frame != last_frame && r_drawFrame->geti()) {
+      last_frame = frame;
+
+      if (r_clearFrame->geti()) {
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+        assert_gl("Clearing buffers");
+      }
+
+      for (auto &spair : draw_systems_) {
+        if (spair.second->active()) {
+          spair.second->draw(sim_time_);
         }
-  #endif
-
-        cvars_.update_cvars();
       }
 
-  #if HIDE_CURSOR_ON_CONSOLE_CLOSE
-      switch (mousemode) {
-      case 0:
-        glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_HIDDEN);
-        glfwSetInputMode(window_, GLFW_STICKY_KEYS, 1);
-        break;
-      case 1:
-        glfwSetInputMode(window_, GLFW_CURSOR_MODE, GLFW_CURSOR_NORMAL);
-        glfwSetInputMode(window_, GLFW_STICKY_KEYS, 0);
-        break;
-      default: break;
-      }
-  #endif
+      glfwSwapBuffers(window_);
+    }
 
-      if (frame != last_frame && r_drawFrame->geti()) {
-        last_frame = frame;
-
-        if (r_clearFrame->geti()) {
-          glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
-          assert_gl("Clearing buffers");
-        }
-
-        for (auto &spair : draw_systems_) {
-          if (spair.second->active()) {
-            spair.second->draw(sim_time_);
-          }
-        }
-
-        glfwSwapBuffers(window_);
-      }
-
-      if (cl_willQuit->geti()) {
-        running_ = false;
-      } else if (!wnd_focused->geti()) {
-        std::this_thread::sleep_for(cl_frameloop_sleep_duration());
-      }
-    } // while (running)
-  } // resource dropping scope
+    if (cl_willQuit->geti()) {
+      running_ = false;
+    } else if (!wnd_focused->geti()) {
+      std::this_thread::sleep_for(cl_frameloop_sleep_duration());
+    }
+  } // while (running)
 } // frameloop
 
 
