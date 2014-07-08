@@ -354,7 +354,7 @@ end
 
 -- pkg-config packages
 configuration {}
-g_dynamic_libs = { }
+g_dynamic_libs = { "libzmq" }
 g_static_libs = { "snow-common", "libenet", "glfw3" }
 
 if #g_static_libs > 0 then
