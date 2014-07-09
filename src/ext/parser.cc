@@ -336,17 +336,10 @@ int parser_t::read_vec2(vec2f_t &vec)
 
   if ((result = read_token(TOK_CURL_OPEN))) {
     return result;
-  }
-  if ((result = read_float(vec.x))) {
-    goto read_vec2_reset_and_return;
-  }
-  if ((result = read_token(TOK_COMMA))) {
-    goto read_vec2_reset_and_return;
-  }
-  if ((result = read_float(vec.y))) {
-    goto read_vec2_reset_and_return;
-  }
-  if ((result = read_token(TOK_CURL_CLOSE))) {
+  } else if ((result = read_float(vec.x)) ||
+      (result = read_token(TOK_COMMA)) ||
+      (result = read_float(vec.y)) ||
+      (result = read_token(TOK_CURL_CLOSE))) {
     goto read_vec2_reset_and_return;
   }
 
