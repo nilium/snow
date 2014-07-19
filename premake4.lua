@@ -159,7 +159,7 @@ kind          "StaticLib"
 targetdir     "lib"
 
 language      "C"
-files         { "src/ext/sqlite3.c", "src/ext/stb_image.c" }
+files         { "ext/snow-ext/sqlite3.c", "ext/snow-ext/stb_image.c" }
 buildoptions  { "-arch x86_64" }
 
 end
@@ -174,6 +174,8 @@ language      "C++"
 files( os.matchfiles("src/**.mm") )
 
 flags         { "FloatStrict", "NoRTTI" }
+
+defines       { "SNOW_EXCLUDE_EXT_LIBRARIES" }
 
 buildoptions  { "-arch x86_64" }
 buildoptions  { "-include src/snow.objc.hh" }
@@ -203,6 +205,8 @@ language      "C++"
 kind          "ConsoleApp"
 files         { "snowhash.cc" }
 
+defines       { "SNOW_EXCLUDE_EXT_LIBRARIES" }
+
 -- Link snow-common
 linkoptions   { '`pkg-config --libs snow-common`' }
 buildoptions  { '`pkg-config --cflags snow-common`' }
@@ -231,6 +235,9 @@ project       "snowhost"
 language      "C++"
 kind          "ConsoleApp"
 files         { "host.cc" }
+
+links         { "snow_c_libs" }
+includedirs   { "ext" }
 
 -- Link snow-common
 linkoptions   { '`pkg-config --libs snow-common`' }
@@ -278,6 +285,7 @@ objdir        "obj"
 
 
 -- Libraries
+includedirs   { "ext" }
 links         { "zmq" }
 links         { "physfs", "snow_c_libs", "snow_objcxx_libs" }
 linkoptions   { '`fltk-config --ldflags`' }
@@ -285,7 +293,6 @@ buildoptions  { '`fltk-config --cxxflags`' }
 
 
 -- Add sources/include directories
-includedirs   { "include" }
 local cxx_files = snow.join_arrays(os.matchfiles("src/**.cc"), os.matchfiles("src/**.cxx"), os.matchfiles("src/**.cpp"))
 files(cxx_files)
 excludes "src/snow.cc" -- pch only

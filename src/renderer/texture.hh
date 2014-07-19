@@ -8,7 +8,7 @@
 
 #include "../config.hh"
 #include "sgl.hh"
-#include "../ext/stb_image.h"
+#include <snow-ext/stb_image.h>
 
 
 namespace snow {

@@ -6,8 +6,6 @@
 #include "sys_main.hh"
 #include "renderer/sgl.hh"
 #include <enet/enet.h>
-#include <physfs.h>
-#include "ext/sqlite3.h"
 #include <cstring>
 #include <cerrno>
 #include <functional>

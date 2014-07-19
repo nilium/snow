@@ -6,7 +6,7 @@
 #ifndef __SNOW__PHYSICSFS_VFS_HH__
 #define __SNOW__PHYSICSFS_VFS_HH__
 
-#include "../ext/sqlite3.h"
+#include <snow-ext/sqlite3.h>
 
 
 namespace snow {

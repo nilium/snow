@@ -20,7 +20,7 @@
 // Font test
 #include "../renderer/font.hh"
 #include "../renderer/texture.hh"
-#include "../ext/stb_image.h"
+#include <snow-ext/stb_image.h>
 #include "../data/database.hh"
 
 #include "../autorelease.hh"
