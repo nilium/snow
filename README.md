@@ -28,7 +28,7 @@ Once built, the engine requires a 'base' directory in one of two places,
 depending on the platform:
 
 - On OS X when built as an app bundle, the 'base' directory goes under the app
-bundle's 'Resources' directory.
+  bundle's 'Resources' directory.
 - On other platforms, the 'base' directory is placed alongside the executable.
 
 If using resource archives, the engine expects them to be zip files with a
