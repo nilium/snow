@@ -345,21 +345,7 @@ int xAccess(sqlite3_vfs *vfs, const char *zName, int flags, int *pResOut)
 
 int xFullPathname(sqlite3_vfs *vfs, const char *zName, int nOut, char *zOut)
 {
-  /*
-  const char *realdir = PHYSFS_getRealDir(zName);
-  if (realdir != NULL) {
-    string input { zName };
-    auto last_slash = input.rfind('/');
-    if (last_slash != string::npos) {
-      input = input.substr(last_slash + 1);
-    }
-    return sqlite3_snprintf(nOut, zOut, "%s/%s", realdir, input.c_str()) ? SQLITE_OK : SQLITE_IOERR;
-  } else {
-  */
     return sqlite3_snprintf(nOut, zOut, "%s", zName) ? SQLITE_OK : SQLITE_IOERR;
-  /*
-  }
-  */
 }
 
 
