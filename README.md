@@ -1,7 +1,7 @@
 Snow Engine
 ===============================================================================
 
-The Snow Engine is a person project of mine to build a game/rendering engine.
+The Snow Engine is a personal project of mine to build a game/rendering engine.
 It is currently licensed under a simplified BSD license, found under COPYING 
 and provided below for reference.
 
