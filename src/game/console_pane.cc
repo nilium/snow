@@ -45,7 +45,7 @@ bool console_pane_t::event(const event_t &event)
       propagate = false;
       break;
 
-    case GLFW_KEY_WORLD_1:
+    case GLFW_KEY_GRAVE_ACCENT:
       if (event.key.action == GLFW_PRESS && event.key.mods == GLFW_MOD_SHIFT) {
         open_ = !open_;
         #if HIDE_CURSOR_ON_CONSOLE_CLOSE

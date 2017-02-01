@@ -62,12 +62,12 @@ private:
 
   friend struct resdef_parser_t;
 
-  static const uint64_t font_seed;
-  static const uint64_t material_seed;
-  static const uint64_t texture_seed;
-  static const uint64_t program_seed;
-  static const uint64_t vert_shader_seed;
-  static const uint64_t frag_shader_seed;
+  static const uint32_t font_seed;
+  static const uint32_t material_seed;
+  static const uint32_t texture_seed;
+  static const uint32_t program_seed;
+  static const uint32_t vert_shader_seed;
+  static const uint32_t frag_shader_seed;
 
   enum res_kind_t : unsigned
   {

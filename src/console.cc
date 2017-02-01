@@ -5,7 +5,7 @@
 */
 #include "console.hh"
 #include <cstdlib>
-#include <snow/data/hash.hh>
+#include <snow-ext/hash.hh>
 
 
 namespace snow {
@@ -63,7 +63,7 @@ using args_t = ccmd_t::args_t;
 */
 cvar_t::cvar_t(const string &name, int value, unsigned flags) :
   owner_(nullptr),
-  hash_(hash32(name)),
+  hash_(murmur3::hash32(name)),
   flags_(flags & ~CVAR_DELAYED),
   name_(name),
   cache_()
@@ -83,7 +83,7 @@ cvar_t::cvar_t(const string &name, int value, unsigned flags) :
 */
 cvar_t::cvar_t(const string &name, float value, unsigned flags) :
   owner_(nullptr),
-  hash_(hash32(name)),
+  hash_(murmur3::hash32(name)),
   flags_(flags&~CVAR_DELAYED),
   name_(name),
   cache_()
@@ -101,7 +101,7 @@ cvar_t::cvar_t(const string &name, float value, unsigned flags) :
 */
 cvar_t::cvar_t(const string &name, const string &value, unsigned flags) :
   owner_(nullptr),
-  hash_(hash32(name)),
+  hash_(murmur3::hash32(name)),
   flags_(flags&~CVAR_DELAYED),
   name_(name),
   cache_()
@@ -427,7 +427,7 @@ void cvar_t::update()
 
 ccmd_t::ccmd_t(const string &name, const ccmd_fn_t &fn) :
   name_(name),
-  hash_(hash32(name)),
+  hash_(murmur3::hash32(name)),
   call_(fn)
 {
   if (!fn) {
@@ -439,7 +439,7 @@ ccmd_t::ccmd_t(const string &name, const ccmd_fn_t &fn) :
 
 ccmd_t::ccmd_t(const string &name, ccmd_fn_t &&fn) :
   name_(name),
-  hash_(hash32(name)),
+  hash_(murmur3::hash32(name)),
   call_(std::forward<ccmd_fn_t &&>(fn))
 {
   if (!fn) {
@@ -610,7 +610,7 @@ void cvar_set_t::read_cvars(database_t &db)
 nullptr otherwise. */
 cvar_t *cvar_set_t::get_cvar(const string &name) const
 {
-  return get_cvar(hash32(name));
+  return get_cvar(murmur3::hash32(name));
 }
 
 
@@ -859,7 +859,7 @@ void cvar_set_t::execute(const string &command, bool force)
   string name(namearg.first, namearg.second);
   --len;
 
-  item_map_t::const_iterator iter = cvars_.find(hash32(name));
+  item_map_t::const_iterator iter = cvars_.find(murmur3::hash32(name));
   if (iter == cvars_.cend()) {
     cvar_is_invisible:
     s_log_error("No ccmd or cvar named %s", name.c_str());
@@ -898,7 +898,7 @@ void cvar_set_t::execute(const string &command, bool force)
 /*! Gets a console command with the given name. Returns it if found, nullptr otherwise. */
 ccmd_t *cvar_set_t::get_ccmd(const string &name) const
 {
-  return get_ccmd(hash32(name));
+  return get_ccmd(murmur3::hash32(name));
 }
 
 

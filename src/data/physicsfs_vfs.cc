@@ -385,14 +385,10 @@ int xRandomness(sqlite3_vfs *vfs, int nByte, char *zOut)
   FILE *dev_rand = std::fopen("/dev/urandom", "rb");
   if (dev_rand == NULL) {
     dev_rand = std::fopen("/dev/random", "rb");
-
-    if (dev_rand == NULL) {
-      return 0;
-    }
   }
 
   size_t last_read = 1;
-  while (nByte) {
+  while (dev_rand && nByte) {
     size_t bytes_read = fread(zOut, 1, nByte, dev_rand);
     zOut += bytes_read;
     nByte -= bytes_read;
@@ -404,11 +400,13 @@ int xRandomness(sqlite3_vfs *vfs, int nByte, char *zOut)
     fclose(dev_rand);
     dev_rand = NULL;
 
-    if (nByte == 0)
+    if (nByte == 0) {
       return result;
+    }
   }
 #endif
 
+xrand_use_prng:
   using prng = std::mt19937;
   prng engine;
   while (nByte) {

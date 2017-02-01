@@ -8,6 +8,7 @@
 #include "sys_main.hh"
 #include <cfloat>
 #include "autorelease.hh"
+#include "script/bind.hh"
 
 
 static void nullify_log_callback()

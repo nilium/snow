@@ -107,11 +107,11 @@ static unsigned read_named_statement(resdef_parser_t &parser, const C &names, T 
 
 int resdef_parser_t::read_shader(rprogram_t &program, resources_t &res)
 {
-  static constexpr const uint32_t uniform_kw    = 0xe47b99a2U;
-  static constexpr const uint32_t attrib_kw     = 0xe6de8dd5U;
-  static constexpr const uint32_t frag_out_kw   = 0xd9a5527cU;
-  static constexpr const uint32_t vert_kw       = 0x01819b8aU;
-  static constexpr const uint32_t frag_kw       = 0x985dd5a7U;
+  static constexpr const uint32_t uniform_kw    = 0xe28ba5a4U;
+  static constexpr const uint32_t attrib_kw     = 0x3aeacc59U;
+  static constexpr const uint32_t frag_out_kw   = 0x0489c556U;
+  static constexpr const uint32_t vert_kw       = 0x2b991038U;
+  static constexpr const uint32_t frag_kw       = 0xc4e9df3cU;
 
   FAIL_IF(read_keyword(SHADER_KW), PARSE_NOT_MATERIAL, "Expected 'shader' but got invalid token");
   FAIL_IF(read_token(TOK_SINGLE_STRING_LIT) && read_token(TOK_DOUBLE_STRING_LIT),

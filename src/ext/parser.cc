@@ -6,7 +6,7 @@
 #include "parser.hh"
 #include <cassert>
 #include <cstdlib>
-#include <snow/data/hash.hh>
+#include <snow-ext/hash.hh>
 
 
 namespace snow {
@@ -64,7 +64,7 @@ int parser_t::read_token_hash32(token_kind_t kind, uint32_t &hash)
   }
 
   if (iter_->kind == kind) {
-    hash = hash32(iter_->value);
+    hash = murmur3::hash32(iter_->value);
     ++iter_;
     return PARSE_OK;
   }
@@ -82,7 +82,7 @@ int parser_t::read_token_hash64(token_kind_t kind, uint64_t &hash)
   }
 
   if (iter_->kind == kind) {
-    hash = hash64(iter_->value);
+    hash = murmur3::hash64(iter_->value);
     ++iter_;
     return PARSE_OK;
   }

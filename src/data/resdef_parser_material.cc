@@ -62,46 +62,46 @@ int resdef_parser_t::read_material(rmaterial_t &material, resources_t &res)
 
 int resdef_parser_t::read_material_pass(rpass_t &pass, resources_t &res)
 {
-  static constexpr const uint32_t shader_kw               = 0xf47665ceU;
-  static constexpr const uint32_t blend_kw                = 0xc793e9baU;
-  static constexpr const uint32_t zero_kw                 = 0x0e63e815U;
-  static constexpr const uint32_t one_kw                  = 0x56679080U;
-  // depth options
-  static constexpr const uint32_t depthfunc_kw            = 0x88465521U;
-  static constexpr const uint32_t depthwrite_kw           = 0x3641e614U;
-  static constexpr const uint32_t never_kw                = 0xa4c51aa1U;
-  static constexpr const uint32_t less_kw                 = 0xde77bbf6U;
-  static constexpr const uint32_t equal_kw                = 0x40ccff27U;
-  static constexpr const uint32_t lequal_kw               = 0xf976fa44U;
-  static constexpr const uint32_t greater_kw              = 0xbb741676U;
-  static constexpr const uint32_t notequal_kw             = 0x8c06b40cU;
-  static constexpr const uint32_t gequal_kw               = 0x323855daU;
-  static constexpr const uint32_t always_kw               = 0xc9f711bfU;
-  // stencil options
-  static constexpr const uint32_t stencilop_kw            = 0x782811ecU;
-  static constexpr const uint32_t stencilfunc_kw          = 0x602dc8d9U;
-  static constexpr const uint32_t stencilmask_kw          = 0xb970c2dcU;
-  static constexpr const uint32_t keep_kw                 = 0xa6a00bf1U;
-  static constexpr const uint32_t replace_kw              = 0xa965a517U;
-  static constexpr const uint32_t incr_kw                 = 0x0ecdbb09U;
-  static constexpr const uint32_t incr_wrap_kw            = 0xc2645431U;
-  static constexpr const uint32_t decr_kw                 = 0xf04e932bU;
-  static constexpr const uint32_t decr_wrap_kw            = 0x5e53be90U;
-  static constexpr const uint32_t invert_kw               = 0xdef66a05U;
-  // blend factors
-  static constexpr const uint32_t src_color_kw            = 0xc2267eedU;
-  static constexpr const uint32_t one_minus_src_color_kw  = 0xa6802e4bU;
-  static constexpr const uint32_t dst_color_kw            = 0xf7ced121U;
-  static constexpr const uint32_t one_minus_dst_color_kw  = 0x45506c09U;
-  static constexpr const uint32_t src_alpha_kw            = 0x0f48344dU;
-  static constexpr const uint32_t one_minus_src_alpha_kw  = 0x4e64d9aaU;
-  static constexpr const uint32_t dst_alpha_kw            = 0x34b7a091U;
-  static constexpr const uint32_t one_minus_dst_alpha_kw  = 0xd15b9586U;
-  // special single-param blend modes
-  static constexpr const uint32_t opaque_kw               = 0x46a69a6cU;
-  static constexpr const uint32_t screen_kw               = 0xe528bd0dU;
-  static constexpr const uint32_t multiply_kw             = 0x261b1992U;
-  static constexpr const uint32_t alpha_kw                = 0x9be27d8aU;
+  static constexpr const uint32_t shader_kw               = 0xeca3167fU;
+  static constexpr const uint32_t blend_kw                = 0xa076bf66U;
+  static constexpr const uint32_t zero_kw                 = 0x1bbd4ddbU;
+  static constexpr const uint32_t one_kw                  = 0xab4e348bU;
+// depth options
+  static constexpr const uint32_t depthfunc_kw            = 0x6252d515U;
+  static constexpr const uint32_t depthwrite_kw           = 0x35f2bcadU;
+  static constexpr const uint32_t never_kw                = 0x471419ceU;
+  static constexpr const uint32_t less_kw                 = 0xc01d34dbU;
+  static constexpr const uint32_t equal_kw                = 0xf9e2ee1bU;
+  static constexpr const uint32_t lequal_kw               = 0x00c674a4U;
+  static constexpr const uint32_t greater_kw              = 0xa425bdf1U;
+  static constexpr const uint32_t notequal_kw             = 0x8aa61ad8U;
+  static constexpr const uint32_t gequal_kw               = 0x09fe34d4U;
+  static constexpr const uint32_t always_kw               = 0x32faae38U;
+// stencil options
+  static constexpr const uint32_t stencilop_kw            = 0x5942f896U;
+  static constexpr const uint32_t stencilfunc_kw          = 0xb83d8f73U;
+  static constexpr const uint32_t stencilmask_kw          = 0xd8c9e34eU;
+  static constexpr const uint32_t keep_kw                 = 0xda606ce5U;
+  static constexpr const uint32_t replace_kw              = 0xed380290U;
+  static constexpr const uint32_t incr_kw                 = 0x7818440bU;
+  static constexpr const uint32_t incr_wrap_kw            = 0xec537693U;
+  static constexpr const uint32_t decr_kw                 = 0xe482ec2cU;
+  static constexpr const uint32_t decr_wrap_kw            = 0xef8d38c2U;
+  static constexpr const uint32_t invert_kw               = 0xcd4eda5aU;
+// blend factors
+  static constexpr const uint32_t src_color_kw            = 0x9a351e63U;
+  static constexpr const uint32_t one_minus_src_color_kw  = 0xc75f8de3U;
+  static constexpr const uint32_t dst_color_kw            = 0xffc6c314U;
+  static constexpr const uint32_t one_minus_dst_color_kw  = 0xeece2c13U;
+  static constexpr const uint32_t src_alpha_kw            = 0x5ce3c9edU;
+  static constexpr const uint32_t one_minus_src_alpha_kw  = 0x6dec91b7U;
+  static constexpr const uint32_t dst_alpha_kw            = 0xe86bbbd7U;
+  static constexpr const uint32_t one_minus_dst_alpha_kw  = 0x5fe09a47U;
+// special single-param blend modes
+  static constexpr const uint32_t opaque_kw               = 0x1a5ab9c2U;
+  static constexpr const uint32_t screen_kw               = 0xc5ff76a6U;
+  static constexpr const uint32_t multiply_kw             = 0x471666d2U;
+  static constexpr const uint32_t alpha_kw                = 0x61b4af24U;
 
   if (read_token(TOK_CURL_OPEN)) {
     set_error("Expected { following 'pass'");
@@ -334,18 +334,18 @@ int resdef_parser_t::read_material_pass(rpass_t &pass, resources_t &res)
 
 int resdef_parser_t::read_material_map(rpass_t &pass, size_t index, resources_t &res)
 {
-  static constexpr const uint32_t map_kw                    = 0x2887751dU;
-  static constexpr const uint32_t filter_kw                 = 0x55de6353U;
-  static constexpr const uint32_t nearest_kw                = 0x0d15c833U;
-  static constexpr const uint32_t linear_kw                 = 0x1200a8c4U;
-  static constexpr const uint32_t nearest_mipmap_nearest_kw = 0xbfcc748cU;
-  static constexpr const uint32_t linear_mipmap_nearest_kw  = 0xa05fcedbU;
-  static constexpr const uint32_t nearest_mipmap_linear_kw  = 0xaf8df3c2U;
-  static constexpr const uint32_t linear_mipmap_linear_kw   = 0xa86b0a38U;
-  static constexpr const uint32_t wrap_kw                   = 0x91c6382eU;
-  static constexpr const uint32_t edge_kw                   = 0x1ea489eaU;
-  static constexpr const uint32_t mirrored_kw               = 0x3f472f58U;
-  static constexpr const uint32_t repeat_kw                 = 0xa3348007U;
+  static constexpr const uint32_t map_kw                    = 0xbc2b01aeU;
+  static constexpr const uint32_t filter_kw                 = 0x6a6f1870U;
+  static constexpr const uint32_t nearest_kw                = 0x29c6acb8U;
+  static constexpr const uint32_t linear_kw                 = 0x86e10813U;
+  static constexpr const uint32_t nearest_mipmap_nearest_kw = 0x20198d17U;
+  static constexpr const uint32_t linear_mipmap_nearest_kw  = 0xac273587U;
+  static constexpr const uint32_t nearest_mipmap_linear_kw  = 0xbbdd2f67U;
+  static constexpr const uint32_t linear_mipmap_linear_kw   = 0x48f9d0d7U;
+  static constexpr const uint32_t wrap_kw                   = 0x2e197f12U;
+  static constexpr const uint32_t edge_kw                   = 0x86de7dfaU;
+  static constexpr const uint32_t mirrored_kw               = 0xb83c0593U;
+  static constexpr const uint32_t repeat_kw                 = 0xa7b72604U;
 
   while (!eof()) {
     uint32_t hash = 0;

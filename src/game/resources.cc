@@ -4,7 +4,7 @@
   is not present, refer to <https://raw.github.com/nilium/snow/master/COPYING>.
 */
 #include "resources.hh"
-#include <snow/data/hash.hh>
+#include <snow-ext/hash.hh>
 #include "../data/resdef_parser.hh"
 #include "../data/database.hh"
 #include "../renderer/texture.hh"
@@ -48,12 +48,12 @@ resources_t g_default_resources;
 } // namespace <anon>
 
 
-const uint64_t resources_t::font_seed        = 0x892c01fd8a8133b9UL;
-const uint64_t resources_t::material_seed    = 0x14f054214ee70b42UL;
-const uint64_t resources_t::texture_seed     = 0xef134ee58d8d956aUL;
-const uint64_t resources_t::program_seed     = 0x9eed7bcf7ab01992UL;
-const uint64_t resources_t::vert_shader_seed = 0x84c1fbf3f9cbb1aeUL;
-const uint64_t resources_t::frag_shader_seed = 0x0650eccf70e139c7UL;
+const uint32_t resources_t::font_seed        = 0x8a8133b9UL;
+const uint32_t resources_t::material_seed    = 0x4ee70b42UL;
+const uint32_t resources_t::texture_seed     = 0x8d8d956aUL;
+const uint32_t resources_t::program_seed     = 0x7ab01992UL;
+const uint32_t resources_t::vert_shader_seed = 0xf9cbb1aeUL;
+const uint32_t resources_t::frag_shader_seed = 0x70e139c7UL;
 
 
 resources_t &resources_t::default_resources()
@@ -101,7 +101,7 @@ void resources_t::prepare_resources()
 rfont_t *resources_t::load_font(const string &name)
 {
   std::lock_guard<std::recursive_mutex> lock((lock_));
-  const uint64_t hash = hash64(name, font_seed);
+  const uint64_t hash = murmur3::hash64(name, font_seed);
 
   {
     const resmap_t::const_iterator iter = resources_.find(hash);
@@ -168,7 +168,7 @@ rfont_t *resources_t::load_font(const string &name)
 rtexture_t *resources_t::load_texture(const string &path, bool mipmaps)
 {
   std::lock_guard<std::recursive_mutex> lock((lock_));
-  const uint64_t hash = hash64(path, texture_seed);
+  const uint64_t hash = murmur3::hash64(path, texture_seed);
 
   {
     const resmap_t::const_iterator iter = resources_.find(hash);
@@ -227,7 +227,7 @@ bool resources_t::load_material_from(rmaterial_t *mat,
 rmaterial_t *resources_t::load_material(const string &name)
 {
   std::lock_guard<std::recursive_mutex> lock((lock_));
-  const uint64_t hash = hash64(name, material_seed);
+  const uint64_t hash = murmur3::hash64(name, material_seed);
 
   {
     const resmap_t::const_iterator iter = resources_.find(hash);
@@ -296,7 +296,7 @@ bool resources_t::load_program_def(rprogram_t *prog, const locmap_t::const_itera
 rprogram_t *resources_t::load_program(const string &name)
 {
   std::lock_guard<std::recursive_mutex> lock((lock_));
-  const uint64_t hash = hash64(name, program_seed);
+  const uint64_t hash = murmur3::hash64(name, program_seed);
 
   {
     const resmap_t::const_iterator iter = resources_.find(hash);
@@ -345,7 +345,7 @@ rprogram_t *resources_t::load_program(const string &name)
 rshader_t *resources_t::load_shader(const string &path, unsigned kind)
 {
   std::lock_guard<std::recursive_mutex> lock((lock_));
-  const uint64_t hash = hash64(path, kind == GL_FRAGMENT_SHADER
+  const uint64_t hash = murmur3::hash64(path, kind == GL_FRAGMENT_SHADER
     ? frag_shader_seed : vert_shader_seed);
 
   {
@@ -503,7 +503,7 @@ void resources_t::prepare_fonts()
         for (auto &result : stmt) {
           const char *fontname = result.column_text_ptr(g_font_name_col);
           const int len = result.column_blob_size(g_font_name_col);
-          const uint64_t hash = hash64(fontname, len, font_seed);
+          const uint64_t hash = murmur3::hash64(fontname, len, font_seed);
           font_dbs_.emplace(hash, pair.first);
           s_log_note("Located font '%s' in <%s>", fontname, *fdb_iter);
         }
@@ -570,8 +570,8 @@ void resources_t::find_definitions_within(tokiter_t iter,
     }
 
     switch (kind) {
-    case RESDEF_KIND_MATERIAL:  hash = hash64(name, material_seed); break;
-    case RESDEF_KIND_SHADER:    hash = hash64(name, program_seed); break;
+    case RESDEF_KIND_MATERIAL:  hash = murmur3::hash64(name, material_seed); break;
+    case RESDEF_KIND_SHADER:    hash = murmur3::hash64(name, program_seed); break;
     default:
       s_log_error("Error parsing material file: %s", parser.error().c_str());
       continue;
@@ -668,7 +668,7 @@ auto resources_t::definition_names() const -> const nameset_t &
 
 bool resources_t::name_is_material(const string &name) const
 {
-  const uint64_t hash = hash64(name, material_seed);
+  const uint64_t hash = murmur3::hash64(name, material_seed);
   std::lock_guard<std::recursive_mutex> lock((lock_));
   const locmap_t::const_iterator iter = res_files_.find(hash);
   return iter != res_files_.cend() && iter->second.kind == RESDEF_KIND_MATERIAL;
@@ -678,7 +678,7 @@ bool resources_t::name_is_material(const string &name) const
 
 bool resources_t::name_is_program(const string &name) const
 {
-  const uint64_t hash = hash64(name, program_seed);
+  const uint64_t hash = murmur3::hash64(name, program_seed);
   std::lock_guard<std::recursive_mutex> lock((lock_));
   const locmap_t::const_iterator iter = res_files_.find(hash);
   return iter != res_files_.cend() && iter->second.kind == RESDEF_KIND_SHADER;

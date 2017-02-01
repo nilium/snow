@@ -18,3 +18,7 @@ changelog/sync
 doc/
 snowhash
 trac/
+cmake/
+3p/
+.idea/
+cmake-build-*/
