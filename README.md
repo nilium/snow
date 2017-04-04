@@ -39,7 +39,7 @@ the base directory or a platform-specific user-writable directory.
 License
 -------------------------------------------------------------------------------
 
-        Copyright (c) 2013 - 2014, Noel Raymond Cower <ncower@gmail.com>
+        Copyright (c) 2013, Noel Raymond Cower <ncower@gmail.com>
         All rights reserved.
 
         Redistribution and use in source and binary forms, with or without
